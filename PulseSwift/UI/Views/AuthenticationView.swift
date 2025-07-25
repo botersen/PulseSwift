@@ -202,7 +202,7 @@ struct AuthenticationView: View {
                                     isValid: authManager.passwordValidation.hasNumber
                                 )
                                 PasswordRequirementView(
-                                    text: "Must include a character (!@#$%^&*_-)",
+                                    text: "Must include a character (!@#$%^&*_-.)",
                                     isValid: authManager.passwordValidation.hasSpecialChar
                                 )
                             }
