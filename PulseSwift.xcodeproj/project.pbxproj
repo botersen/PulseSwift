@@ -6,6 +6,21 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DA4B98B62E32C1240079DAC5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B98B52E32C1240079DAC5 /* GoogleSignIn */; };
+		DA4B98B82E32C1240079DAC5 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B98B72E32C1240079DAC5 /* GoogleSignInSwift */; };
+		DA4B994F2E32E1B80079DAC5 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B994E2E32E1B80079DAC5 /* Auth */; };
+		DA4B99512E32E1B80079DAC5 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99502E32E1B80079DAC5 /* Functions */; };
+		DA4B99532E32E1B80079DAC5 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99522E32E1B80079DAC5 /* PostgREST */; };
+		DA4B99552E32E1B80079DAC5 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99542E32E1B80079DAC5 /* Realtime */; };
+		DA4B99572E32E1B80079DAC5 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99562E32E1B80079DAC5 /* Storage */; };
+		DA4B99592E32E1B80079DAC5 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99582E32E1B80079DAC5 /* Supabase */; };
+		DA4B995C2E32E3170079DAC5 /* OneSignalExtension in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B995B2E32E3170079DAC5 /* OneSignalExtension */; };
+		DA4B995E2E32E3170079DAC5 /* OneSignalFramework in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B995D2E32E3170079DAC5 /* OneSignalFramework */; };
+		DA4B99602E32E3170079DAC5 /* OneSignalInAppMessages in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B995F2E32E3170079DAC5 /* OneSignalInAppMessages */; };
+		DA4B99622E32E3170079DAC5 /* OneSignalLocation in Frameworks */ = {isa = PBXBuildFile; productRef = DA4B99612E32E3170079DAC5 /* OneSignalLocation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		DA4B94962E3284030079DAC5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +67,18 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA4B98B62E32C1240079DAC5 /* GoogleSignIn in Frameworks */,
+				DA4B99602E32E3170079DAC5 /* OneSignalInAppMessages in Frameworks */,
+				DA4B995C2E32E3170079DAC5 /* OneSignalExtension in Frameworks */,
+				DA4B98B82E32C1240079DAC5 /* GoogleSignInSwift in Frameworks */,
+				DA4B99572E32E1B80079DAC5 /* Storage in Frameworks */,
+				DA4B995E2E32E3170079DAC5 /* OneSignalFramework in Frameworks */,
+				DA4B99512E32E1B80079DAC5 /* Functions in Frameworks */,
+				DA4B99592E32E1B80079DAC5 /* Supabase in Frameworks */,
+				DA4B99552E32E1B80079DAC5 /* Realtime in Frameworks */,
+				DA4B994F2E32E1B80079DAC5 /* Auth in Frameworks */,
+				DA4B99622E32E3170079DAC5 /* OneSignalLocation in Frameworks */,
+				DA4B99532E32E1B80079DAC5 /* PostgREST in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +139,18 @@
 			);
 			name = PulseSwift;
 			packageProductDependencies = (
+				DA4B98B52E32C1240079DAC5 /* GoogleSignIn */,
+				DA4B98B72E32C1240079DAC5 /* GoogleSignInSwift */,
+				DA4B994E2E32E1B80079DAC5 /* Auth */,
+				DA4B99502E32E1B80079DAC5 /* Functions */,
+				DA4B99522E32E1B80079DAC5 /* PostgREST */,
+				DA4B99542E32E1B80079DAC5 /* Realtime */,
+				DA4B99562E32E1B80079DAC5 /* Storage */,
+				DA4B99582E32E1B80079DAC5 /* Supabase */,
+				DA4B995B2E32E3170079DAC5 /* OneSignalExtension */,
+				DA4B995D2E32E3170079DAC5 /* OneSignalFramework */,
+				DA4B995F2E32E3170079DAC5 /* OneSignalInAppMessages */,
+				DA4B99612E32E3170079DAC5 /* OneSignalLocation */,
 			);
 			productName = PulseSwift;
 			productReference = DA4B94882E3284010079DAC5 /* PulseSwift.app */;
@@ -195,6 +234,11 @@
 			);
 			mainGroup = DA4B947F2E3284010079DAC5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DA4B98B42E32C1240079DAC5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DA4B94892E3284010079DAC5 /* Products */;
 			projectDirPath = "";
@@ -400,6 +444,7 @@
 				DEVELOPMENT_TEAM = SV5KA9UX92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIAppFonts = "SpecialGothicExpandedOne-Regular.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +473,7 @@
 				DEVELOPMENT_TEAM = SV5KA9UX92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIAppFonts = "SpecialGothicExpandedOne-Regular.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -558,6 +604,96 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DA4B98B42E32C1240079DAC5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+		DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+		DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/OneSignal/OneSignal-iOS-SDK";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.2.14;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DA4B98B52E32C1240079DAC5 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B98B42E32C1240079DAC5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		DA4B98B72E32C1240079DAC5 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B98B42E32C1240079DAC5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		DA4B994E2E32E1B80079DAC5 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		DA4B99502E32E1B80079DAC5 /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		DA4B99522E32E1B80079DAC5 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		DA4B99542E32E1B80079DAC5 /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		DA4B99562E32E1B80079DAC5 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		DA4B99582E32E1B80079DAC5 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B994D2E32E1B80079DAC5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		DA4B995B2E32E3170079DAC5 /* OneSignalExtension */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */;
+			productName = OneSignalExtension;
+		};
+		DA4B995D2E32E3170079DAC5 /* OneSignalFramework */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */;
+			productName = OneSignalFramework;
+		};
+		DA4B995F2E32E3170079DAC5 /* OneSignalInAppMessages */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */;
+			productName = OneSignalInAppMessages;
+		};
+		DA4B99612E32E3170079DAC5 /* OneSignalLocation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA4B995A2E32E3170079DAC5 /* XCRemoteSwiftPackageReference "OneSignal-iOS-SDK" */;
+			productName = OneSignalLocation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DA4B94802E3284010079DAC5 /* Project object */;
 }
