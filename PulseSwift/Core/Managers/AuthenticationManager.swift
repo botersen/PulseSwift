@@ -720,8 +720,8 @@ class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthor
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {
-            // Return a default window if available
-            return UIApplication.shared.windows.first ?? UIWindow()
+            // Fallback: create a basic window if no scene available
+            return UIWindow()
         }
         return window
     }

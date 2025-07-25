@@ -413,30 +413,40 @@ struct UsernameCustomizationView: View {
     private func finishOnboarding(username: String, profileImage: String?) {
         // For social login users, we should already have a current user from the auth process
         if let currentUser = authManager.currentUser {
-            // Update the existing user data
+            // Update the existing user data with new username and language preference
+            let updatedPreferences = UserPreferences(
+                language: selectedLanguage,
+                allowsGlobalMatching: currentUser.preferences.allowsGlobalMatching,
+                maxRadius: currentUser.preferences.maxRadius,
+                enabledNotifications: currentUser.preferences.enabledNotifications
+            )
+            
             let updatedUser = User(
                 id: currentUser.id, // ✅ Use existing user ID
                 username: username,
                 email: currentUser.email, // Use existing email from social auth
                 subscriptionTier: currentUser.subscriptionTier,
+                location: currentUser.location,
+                createdAt: currentUser.createdAt,
+                lastActiveAt: Date(),
+                preferences: updatedPreferences,
+                stats: currentUser.stats,
                 profileImageURL: profileImage,
-                firstName: currentUser.firstName,
-                lastName: currentUser.lastName,
-                preferredLanguage: selectedLanguage,
-                profileSetupCompleted: true
+                deviceToken: currentUser.deviceToken
             )
             
             authManager.completeProfileSetup(user: updatedUser)
         } else {
-            // Fallback for username/password signup (should not happen here)
+            // Fallback for username/password signup
+            let userPreferences = UserPreferences(language: selectedLanguage)
+            
             let updatedUser = User(
                 id: UUID(),
                 username: username,
                 email: userEmail,
                 subscriptionTier: .free,
-                profileImageURL: profileImage,
-                preferredLanguage: selectedLanguage,
-                profileSetupCompleted: true
+                preferences: userPreferences,
+                profileImageURL: profileImage
             )
             
             authManager.completeProfileSetup(user: updatedUser)
