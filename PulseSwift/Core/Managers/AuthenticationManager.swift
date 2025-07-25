@@ -520,8 +520,8 @@ class AuthenticationManager: ObservableObject {
     }
     
     private func isValidPassword(_ password: String) -> Bool {
-        // At least 8 characters, one uppercase, one number, one special character
-        let passwordRegex = "^(?=.*[A-Z])(?=.*\\d)(?=.*[!$%^&*])(?=.*[a-z]).{8,}$"
+        // At least 8 characters, one uppercase, one number, one special character from approved list
+        let passwordRegex = "^(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*_\\.-])(?=.*[a-z]).{8,}$"
         let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
         return passwordPredicate.evaluate(with: password)
     }
@@ -530,7 +530,7 @@ class AuthenticationManager: ObservableObject {
         passwordValidation.hasMinLength = password.count >= 8
         passwordValidation.hasUppercase = password.contains { $0.isUppercase }
         passwordValidation.hasNumber = password.contains { $0.isNumber }
-        passwordValidation.hasSpecialChar = password.contains { "!$%^&*".contains($0) }
+        passwordValidation.hasSpecialChar = password.contains { "!@#$%^&*_-.".contains($0) }
     }
     
     // MARK: - Smart Username Generation

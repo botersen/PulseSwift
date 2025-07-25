@@ -168,8 +168,16 @@ struct AuthenticationView: View {
                         }
                         .padding(12) // Reduced padding from 16 to 12
                         .onChange(of: password) { _, newPassword in
+                            // Filter password to only allow approved characters
+                            let allowedCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "!@#$%^&*_-."))
+                            let filteredPassword = String(newPassword.unicodeScalars.filter { allowedCharacters.contains($0) })
+                            
+                            if filteredPassword != newPassword {
+                                password = filteredPassword
+                            }
+                            
                             if isSignUp {
-                                authManager.validatePasswordRealTime(newPassword)
+                                authManager.validatePasswordRealTime(filteredPassword)
                             }
                         }
                         .background(
