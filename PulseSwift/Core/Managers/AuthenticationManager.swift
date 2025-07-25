@@ -95,12 +95,14 @@ class AuthenticationManager: ObservableObject {
     // MARK: - Google Sign In Configuration
     
     private func configureGoogleSignIn() {
-        // Configure Google Sign In with your client ID
-        // TODO: Add your Google Sign In client ID from Google Cloud Console
-        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+        // Configure Google Sign In with client ID from Google.plist
+        if let path = Bundle.main.path(forResource: "Google", ofType: "plist"),
            let plist = NSDictionary(contentsOfFile: path),
            let clientId = plist["CLIENT_ID"] as? String {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
+            print("✅ Google Sign In configured with client ID: \(clientId)")
+        } else {
+            print("❌ Failed to configure Google Sign In - Google.plist not found or invalid")
         }
     }
     
@@ -192,15 +194,16 @@ class AuthenticationManager: ObservableObject {
                     self.errorMessage = nil
                     self.appleSignInDelegate = nil // Clear delegate
                     
+                    // Store user data but don't mark as authenticated yet
+                    self.currentUser = user
+                    
                     // Show username customization
                     self.suggestedUsername = username
                     self.userEmail = email
                     self.showUsernameCustomization = true
                     
                     // Don't set authenticated yet - wait for profile completion
-                    // self.currentUser = user
-                    // self.isAuthenticated = true
-                    // self.syncUserWithOneSignal(user)
+                    // self.isAuthenticated = true will be set in completeProfileSetup()
                 }
                 
             } catch {
@@ -247,31 +250,55 @@ class AuthenticationManager: ObservableObject {
     // MARK: - Google Sign In
     
     func signInWithGoogle() {
+        print("🟢 Starting Google Sign-In...")
         isLoading = true
         errorMessage = nil
         
-        guard let presentingViewController = UIApplication.shared.windows.first?.rootViewController else {
+        // Get the presenting view controller using modern iOS API
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let presentingViewController = window.rootViewController else {
+            print("❌ Unable to get presenting view controller")
             errorMessage = "Unable to present Google Sign In"
             isLoading = false
             return
         }
         
+        // Check if Google Sign In is configured
+        guard GIDSignIn.sharedInstance.configuration != nil else {
+            print("❌ Google Sign In not configured")
+            errorMessage = "Google Sign In not configured"
+            isLoading = false
+            return
+        }
+        
+        print("🟢 Calling Google Sign In with presenting VC...")
         GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { [weak self] result, error in
             Task { @MainActor in
                 guard let self = self else { return }
                 
                 if let error = error {
+                    print("❌ Google Sign In error: \(error.localizedDescription)")
                     self.errorMessage = "Google Sign In failed: \(error.localizedDescription)"
                     self.isLoading = false
                     return
                 }
                 
-                guard let result = result,
-                      let idToken = result.user.idToken?.tokenString else {
+                guard let result = result else {
+                    print("❌ No Google Sign In result")
+                    self.errorMessage = "Google Sign In failed - no result"
+                    self.isLoading = false
+                    return
+                }
+                
+                guard let idToken = result.user.idToken?.tokenString else {
+                    print("❌ No Google ID token")
                     self.errorMessage = "Failed to get Google ID token"
                     self.isLoading = false
                     return
                 }
+                
+                print("✅ Google Sign In successful, got ID token")
                 
                 do {
                     let profile = result.user.profile
@@ -300,15 +327,16 @@ class AuthenticationManager: ObservableObject {
                     self.isLoading = false
                     self.errorMessage = nil
                     
+                    // Store user data but don't mark as authenticated yet
+                    self.currentUser = user
+                    
                     // Show username customization
                     self.suggestedUsername = username
                     self.userEmail = email
                     self.showUsernameCustomization = true
                     
                     // Don't set authenticated yet - wait for profile completion
-                    // self.currentUser = user
-                    // self.isAuthenticated = true
-                    // self.syncUserWithOneSignal(user)
+                    // self.isAuthenticated = true will be set in completeProfileSetup()
                     
                 } catch {
                     self.errorMessage = "Google Sign In failed: \(error.localizedDescription)"
@@ -692,7 +720,8 @@ class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthor
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {
-            fatalError("No window available")
+            // Return a default window if available
+            return UIApplication.shared.windows.first ?? UIWindow()
         }
         return window
     }

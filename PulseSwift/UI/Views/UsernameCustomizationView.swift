@@ -411,16 +411,37 @@ struct UsernameCustomizationView: View {
     }
     
     private func finishOnboarding(username: String, profileImage: String?) {
-        // Create updated user and complete setup
-        let updatedUser = User(
-            id: UUID(),
-            username: username,
-            email: userEmail,
-            subscriptionTier: .free,
-            profileImageURL: profileImage
-        )
+        // For social login users, we should already have a current user from the auth process
+        if let currentUser = authManager.currentUser {
+            // Update the existing user data
+            let updatedUser = User(
+                id: currentUser.id, // ✅ Use existing user ID
+                username: username,
+                email: currentUser.email, // Use existing email from social auth
+                subscriptionTier: currentUser.subscriptionTier,
+                profileImageURL: profileImage,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName,
+                preferredLanguage: selectedLanguage,
+                profileSetupCompleted: true
+            )
+            
+            authManager.completeProfileSetup(user: updatedUser)
+        } else {
+            // Fallback for username/password signup (should not happen here)
+            let updatedUser = User(
+                id: UUID(),
+                username: username,
+                email: userEmail,
+                subscriptionTier: .free,
+                profileImageURL: profileImage,
+                preferredLanguage: selectedLanguage,
+                profileSetupCompleted: true
+            )
+            
+            authManager.completeProfileSetup(user: updatedUser)
+        }
         
-        authManager.completeProfileSetup(user: updatedUser)
         dismiss()
     }
     
