@@ -453,7 +453,7 @@ class AuthenticationManager: ObservableObject {
             throw AuthenticationError.invalidCredential
         }
         
-        isLoading = true
+        // Don't set isLoading here since it's already set in the calling view
         errorMessage = nil
         
         do {
@@ -480,16 +480,12 @@ class AuthenticationManager: ObservableObject {
                 )
             }
             
-            await MainActor.run {
-                self.completeProfileSetup(user: finalUser)
-                self.isLoading = false
-            }
+            // Since this class is @MainActor, we're already on the main thread
+            self.completeProfileSetup(user: finalUser)
             
         } catch {
-            await MainActor.run {
-                self.errorMessage = "Sign up failed: \(error.localizedDescription)"
-                self.isLoading = false
-            }
+            // Since this class is @MainActor, we're already on the main thread
+            self.errorMessage = "Sign up failed: \(error.localizedDescription)"
             throw error
         }
     }

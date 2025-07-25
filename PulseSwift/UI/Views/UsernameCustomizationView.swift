@@ -384,6 +384,7 @@ struct UsernameCustomizationView: View {
                 }
                 
                 await MainActor.run {
+                    self.isLoading = false
                     self.finishOnboarding(username: customUsername, profileImage: profileImageURL)
                 }
                 
