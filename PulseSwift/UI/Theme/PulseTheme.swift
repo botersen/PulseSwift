@@ -97,5 +97,23 @@ extension Font {
             }
         }
     }
+    
+    static func testSpecialGothicFont() {
+        let testFont = UIFont(name: "Special Gothic Expanded One", size: 16)
+        if testFont != nil {
+            print("✅ Special Gothic Expanded One font loaded successfully!")
+        } else {
+            print("❌ Special Gothic Expanded One font failed to load")
+            print("Available fonts containing 'Gothic':")
+            for family in UIFont.familyNames {
+                if family.lowercased().contains("gothic") {
+                    print("Family: \(family)")
+                    for name in UIFont.fontNames(forFamilyName: family) {
+                        print("  - \(name)")
+                    }
+                }
+            }
+        }
+    }
 }
 #endif 

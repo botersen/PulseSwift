@@ -16,6 +16,13 @@ struct PulseSwiftApp: App {
     init() {
         // Register custom font at app startup
         registerCustomFonts()
+        
+        #if DEBUG
+        // Test font loading after registration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Font.testSpecialGothicFont()
+        }
+        #endif
     }
     
     var body: some Scene {
