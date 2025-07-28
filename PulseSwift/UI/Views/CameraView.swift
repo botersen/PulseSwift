@@ -9,9 +9,11 @@ import SwiftUI
 import AVFoundation
 
 struct CameraView: View {
-    @StateObject private var cameraManager = CameraManager()
+    @EnvironmentObject private var cameraManager: CameraManager
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @EnvironmentObject private var locationManager: LocationManager
+    @EnvironmentObject private var matchingManager: MatchingManager
+    @EnvironmentObject private var appState: AppState
     
     @State private var capturedMedia: CapturedMedia?
     @State private var showingCaptionEditor = false
@@ -37,6 +39,15 @@ struct CameraView: View {
                     capturedMedia = nil
                     caption = ""
                 }
+            }
+            
+            // Matching status overlay
+            if matchingManager.isSearchingForMatch || 
+               matchingManager.matchingStatus == .matched ||
+               matchingManager.matchingStatus == .headedToEther {
+                MatchingStatusView(matchingManager: matchingManager)
+                    .padding()
+                    .transition(.scale.combined(with: .opacity))
             }
             
             // Camera controls overlay
@@ -142,6 +153,20 @@ struct CameraView: View {
         .onAppear {
             cameraManager.requestPermission()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .didFindPulseMatch)) { _ in
+            // Reset camera state when match is found
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                capturedMedia = nil
+                selectedRadius = 160934 // Reset to default
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pulseHeadedToEther)) { _ in
+            // Reset camera state when pulse heads to ether
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                capturedMedia = nil
+                selectedRadius = 160934 // Reset to default
+            }
+        }
     }
     
     private func handleCapture() {
@@ -188,7 +213,7 @@ struct CameraView: View {
         }
         
         // Check location availability
-        guard let senderLocation = locationManager.getCurrentUserLocation() else {
+        guard locationManager.getCurrentUserLocation() != nil else {
             // Show location required alert
             return
         }
@@ -208,21 +233,18 @@ struct CameraView: View {
                     mimeType: mimeType
                 )
                 
-                // Send pulse to backend
-                let pulse = try await SupabaseService.shared.sendPulse(
+                print("✅ Media uploaded successfully: \(mediaURL)")
+                
+                // Start the pulse sending and matching flow
+                await appState.sendPulse(
                     mediaURL: mediaURL,
                     mediaType: media.type,
                     caption: caption.isEmpty ? nil : caption,
-                    targetRadius: selectedRadius,
-                    senderLocation: senderLocation
+                    targetRadius: selectedRadius
                 )
                 
-                print("✅ Pulse sent successfully: \(pulse.id)")
-                
-                // Reset state
-                capturedMedia = nil
+                // Reset state - keep captured media visible during matching
                 caption = ""
-                selectedRadius = 160934 // Reset to default
                 
                 // Show success feedback
                 let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)

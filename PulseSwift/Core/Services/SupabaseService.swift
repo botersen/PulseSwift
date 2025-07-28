@@ -210,8 +210,107 @@ class SupabaseService {
     
     func findNearbyUsers(latitude: Double, longitude: Double, radiusMeters: Double, excludeUserId: UUID) async throws -> [UserProfile] {
         print("🔍 Finding nearby users within \(radiusMeters) meters")
-        // Return empty array for now - can implement geospatial queries later
-        return []
+        
+        do {
+            // Use the database function for efficient geospatial search
+            let response = try await client.rpc(
+                "find_users_within_radius",
+                params: [
+                    "lat": latitude,
+                    "lng": longitude, 
+                    "radius_meters": radiusMeters
+                ]
+            ).execute()
+            
+            let data = response.data
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            let allUsers = try decoder.decode([UserProfile].self, from: data)
+            // Filter out the current user
+            let users = allUsers.filter { $0.id != excludeUserId }
+            print("✅ Found \(users.count) nearby users (excluding current user)")
+            return users
+        } catch {
+            print("❌ Failed to find nearby users: \(error)")
+            // Return empty array as fallback
+            return []
+        }
+    }
+    
+    // MARK: - Pulse Management
+    
+    func sendPulseToUser(pulse: Pulse, recipient: UserProfile) async throws {
+        print("🚀 Sending pulse \(pulse.id) to user \(recipient.username)")
+        
+        do {
+            // Create pulse match record using proper Codable structure
+            let matchRecord = PulseMatchRecord(
+                id: UUID().uuidString,
+                pulse_id: pulse.id.uuidString,
+                sender_id: pulse.senderId.uuidString,
+                recipient_id: recipient.id.uuidString,
+                matched_at: ISO8601DateFormatter().string(from: Date()),
+                last_activity_at: ISO8601DateFormatter().string(from: Date()),
+                status: "active"
+            )
+            
+            try await client.from("pulse_matches").insert(matchRecord).execute()
+            print("✅ Created pulse match record")
+            
+        } catch {
+            print("❌ Failed to send pulse to user: \(error)")
+            throw SupabaseError.sendPulseFailed
+        }
+    }
+    
+    func updatePulseStatus(pulseId: UUID, status: PulseStatus) async throws {
+        print("📝 Updating pulse \(pulseId) status to \(status)")
+        
+        do {
+            let updateRecord = PulseStatusUpdate(
+                status: status.rawValue,
+                updated_at: ISO8601DateFormatter().string(from: Date())
+            )
+            
+            try await client.from("pulses")
+                .update(updateRecord)
+                .eq("id", value: pulseId.uuidString)
+                .execute()
+                
+            print("✅ Updated pulse status successfully")
+        } catch {
+            print("❌ Failed to update pulse status: \(error)")
+            throw SupabaseError.updatePulseFailed
+        }
+    }
+    
+    func createPulse(_ pulse: Pulse) async throws -> Pulse {
+        print("💫 Creating new pulse in database")
+        
+        do {
+            let pulseRecord = PulseRecord(
+                id: pulse.id.uuidString,
+                sender_id: pulse.senderId.uuidString,
+                media_url: pulse.mediaURL,
+                media_type: pulse.mediaType.rawValue,
+                caption: pulse.caption,
+                original_language: pulse.originalLanguage,
+                target_radius: pulse.targetRadius,
+                created_at: ISO8601DateFormatter().string(from: pulse.createdAt),
+                expires_at: ISO8601DateFormatter().string(from: pulse.expiresAt),
+                status: pulse.status.rawValue,
+                attempt_number: pulse.attemptNumber
+            )
+            
+            try await client.from("pulses").insert(pulseRecord).execute()
+            print("✅ Created pulse successfully")
+            return pulse
+            
+        } catch {
+            print("❌ Failed to create pulse: \(error)")
+            throw SupabaseError.createPulseFailed
+        }
     }
     
     func uploadMedia(data: Data, fileName: String, mimeType: String) async throws -> String {
@@ -219,7 +318,7 @@ class SupabaseService {
             // Simple upload using basic data
             _ = try await client.storage
                 .from("pulse-media")
-                .upload(path: fileName, file: data)
+                .upload(fileName, data: data)
             
             let publicURL = try client.storage
                 .from("pulse-media")
@@ -273,6 +372,9 @@ enum SupabaseError: LocalizedError {
     case invalidResponse
     case notImplemented
     case uploadFailed
+    case sendPulseFailed
+    case updatePulseFailed
+    case createPulseFailed
     
     var errorDescription: String? {
         switch self {
@@ -288,6 +390,12 @@ enum SupabaseError: LocalizedError {
             return "Feature not implemented"
         case .uploadFailed:
             return "Media upload failed"
+        case .sendPulseFailed:
+            return "Failed to send pulse to user"
+        case .updatePulseFailed:
+            return "Failed to update pulse status"
+        case .createPulseFailed:
+            return "Failed to create new pulse"
         }
     }
 }
@@ -403,4 +511,35 @@ extension SupabaseService {
         
         return languageMap[languageName] ?? "en"
     }
+}
+
+// MARK: - Database Record Structures
+
+struct PulseMatchRecord: Codable {
+    let id: String
+    let pulse_id: String
+    let sender_id: String
+    let recipient_id: String
+    let matched_at: String
+    let last_activity_at: String
+    let status: String
+}
+
+struct PulseStatusUpdate: Codable {
+    let status: String
+    let updated_at: String
+}
+
+struct PulseRecord: Codable {
+    let id: String
+    let sender_id: String
+    let media_url: String
+    let media_type: String
+    let caption: String?
+    let original_language: String
+    let target_radius: Double
+    let created_at: String
+    let expires_at: String
+    let status: String
+    let attempt_number: Int
 } 

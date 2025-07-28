@@ -13,12 +13,17 @@ struct AppRootView: View {
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @EnvironmentObject private var oneSignalManager: OneSignalManager
     @EnvironmentObject private var locationManager: LocationManager
+    @EnvironmentObject private var cameraManager: CameraManager
+    @EnvironmentObject private var matchingManager: MatchingManager
+
     
     var body: some View {
         ZStack {
             // Always black background
             PulseTheme.Colors.background
                 .ignoresSafeArea()
+            
+
             
             // Screen content
             Group {
@@ -52,7 +57,6 @@ struct AppRootView: View {
             .animation(PulseTheme.Animation.medium, value: appState.currentScreen)
         }
         .onAppear {
-            setupManagerIntegrations()
             handleAppLaunch()
         }
         .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
@@ -82,19 +86,7 @@ struct AppRootView: View {
                 }
             }
         }
-    }
-    
-    private func setupManagerIntegrations() {
-        // Connect OneSignal manager with authentication manager
-        authManager.setOneSignalManager(oneSignalManager)
-        
-        // Connect OneSignal manager with location manager
-        locationManager.setOneSignalManager(oneSignalManager)
-        
-        // If user is already authenticated, request location
-        if authManager.isAuthenticated {
-            locationManager.requestLocationPermission()
-        }
+
     }
     
     private func handleAppLaunch() {

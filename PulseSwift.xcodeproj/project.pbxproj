@@ -44,9 +44,22 @@
 		DA4B949F2E3284030079DAC5 /* PulseSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulseSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DA61AA712E3444D80029CF5C /* Exceptions for "PulseSwift" folder in "PulseSwift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DA4B94872E3284010079DAC5 /* PulseSwift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DA4B948A2E3284010079DAC5 /* PulseSwift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DA61AA712E3444D80029CF5C /* Exceptions for "PulseSwift" folder in "PulseSwift" target */,
+			);
 			path = PulseSwift;
 			sourceTree = "<group>";
 		};
@@ -444,6 +457,7 @@
 				DEVELOPMENT_TEAM = SV5KA9UX92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PulseSwift/Info.plist;
 				INFOPLIST_KEY_UIAppFonts = "SpecialGothicExpandedOne-Regular.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -473,6 +487,7 @@
 				DEVELOPMENT_TEAM = SV5KA9UX92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PulseSwift/Info.plist;
 				INFOPLIST_KEY_UIAppFonts = "SpecialGothicExpandedOne-Regular.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

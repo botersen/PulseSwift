@@ -14,7 +14,7 @@ struct CameraPreviewView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: UIScreen.main.bounds)
         
-        guard let captureSession = cameraManager.captureSession else {
+        guard let captureSession = cameraManager.session else {
             return view
         }
         

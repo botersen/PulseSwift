@@ -22,7 +22,7 @@ struct SubscriptionView: View {
                         // Header
                         VStack(spacing: PulseTheme.Spacing.md) {
                             Text("Upgrade to Premium")
-                                .font(.custom("MonumentExtended-Regular", size: 28))
+                                .font(.custom("Special Gothic Expanded One", size: 28))
                                 .fontWeight(.bold)
                                 .foregroundColor(PulseTheme.Colors.primary)
                                 .multilineTextAlignment(.center)
@@ -45,7 +45,7 @@ struct SubscriptionView: View {
                         VStack(spacing: PulseTheme.Spacing.lg) {
                             VStack(spacing: PulseTheme.Spacing.sm) {
                                 Text(subscriptionManager.formattedPremiumPrice)
-                                    .font(.custom("MonumentExtended-Regular", size: 32))
+                                    .font(.custom("Special Gothic Expanded One", size: 32))
                                     .fontWeight(.bold)
                                     .foregroundColor(PulseTheme.Colors.primary)
                                 

@@ -24,60 +24,22 @@ struct PulseTheme {
     
     // MARK: - Typography  
     struct Typography {
-        // Try the exact font family name we know exists
-        private static func getMonumentFont(size: CGFloat) -> Font {
-            // Since we know the family is "PP Monument Extended", try different approaches
-            let fontAttempts = [
-                "PP Monument Extended Bold",           // Full name
-                "PP Monument Extended",                // Family name  
-                "PPMonumentExtended-Bold",            // PostScript name
-                "PP Monument Extended-Bold",           // Variation
-                "Monument Extended Bold",              // Without PP
-                "Monument Extended"                    // Simple family
-            ]
-            
-            print("🔍 Testing font names for size \(size):")
-            for fontName in fontAttempts {
-                let isAvailable = UIFont(name: fontName, size: size) != nil
-                print("  \(fontName): \(isAvailable ? "✅ FOUND" : "❌ not found")")
-                
-                if isAvailable {
-                    print("🎉 SUCCESS! Using font: \(fontName)")
-                    return Font.custom(fontName, size: size)
-                }
-            }
-            
-            print("💥 FALLBACK: Monument Extended not found, using bold system font")
-            return Font.system(size: size, weight: .heavy, design: .default)
-        }
+        // All text using Special Gothic Expanded One
+        static let largeTitle = Font.custom("Special Gothic Expanded One", size: 48)
+        static let title1 = Font.custom("Special Gothic Expanded One", size: 32)
+        static let title2 = Font.custom("Special Gothic Expanded One", size: 24)
+        static let title3 = Font.custom("Special Gothic Expanded One", size: 20)
         
-        // All text using Monument Extended Bold (with fallbacks)
-        static let largeTitle = getMonumentFont(size: 48)
-        static let title1 = getMonumentFont(size: 32)
-        static let title2 = getMonumentFont(size: 24)
-        static let title3 = getMonumentFont(size: 20)
-        
-        // Body text - using Monument Extended Bold
-        static let headline = getMonumentFont(size: 18)
-        static let body = getMonumentFont(size: 16)
-        static let bodySmall = getMonumentFont(size: 14)
-        static let caption = getMonumentFont(size: 12)
-        static let caption2 = getMonumentFont(size: 10)
+        // Body text - using Special Gothic Expanded One
+        static let headline = Font.custom("Special Gothic Expanded One", size: 18)
+        static let body = Font.custom("Special Gothic Expanded One", size: 16)
+        static let bodySmall = Font.custom("Special Gothic Expanded One", size: 14)
+        static let caption = Font.custom("Special Gothic Expanded One", size: 12)
+        static let caption2 = Font.custom("Special Gothic Expanded One", size: 10)
         
         // Button text
-        static let button = getMonumentFont(size: 16)
-        static let buttonSmall = getMonumentFont(size: 14)
-        
-        // Debug helper to check available fonts
-        static func debugAvailableFonts() {
-            print("Available font families:")
-            UIFont.familyNames.sorted().forEach { family in
-                print("Family: \(family)")
-                UIFont.fontNames(forFamilyName: family).forEach { font in
-                    print("  - \(font)")
-                }
-            }
-        }
+        static let button = Font.custom("Special Gothic Expanded One", size: 16)
+        static let buttonSmall = Font.custom("Special Gothic Expanded One", size: 14)
     }
     
     // MARK: - Spacing
@@ -118,13 +80,8 @@ struct PulseTheme {
 // MARK: - Font Extensions for easier usage
 
 extension Font {
-    static func monumentExtended(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        switch weight {
-        case .bold, .heavy, .black:
-            return .custom("PP Monument Extended Bold", size: size)
-        default:
-            return .custom("PP Monument Extended", size: size)
-        }
+    static func specialGothic(size: CGFloat) -> Font {
+        return .custom("Special Gothic Expanded One", size: size)
     }
 }
 

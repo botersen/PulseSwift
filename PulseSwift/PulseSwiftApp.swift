@@ -7,14 +7,11 @@
 
 import SwiftUI
 import OneSignalFramework
+import GoogleSignIn
 
 @main
 struct PulseSwiftApp: App {
     @StateObject private var appState = AppState()
-    @StateObject private var authManager = AuthenticationManager()
-    @StateObject private var subscriptionManager = SubscriptionManager()
-    @StateObject private var oneSignalManager = OneSignalManager()
-    @StateObject private var locationManager = LocationManager()
     
     init() {
         // Register custom font at app startup
@@ -25,10 +22,12 @@ struct PulseSwiftApp: App {
         WindowGroup {
             AppRootView()
                 .environmentObject(appState)
-                .environmentObject(authManager)
-                .environmentObject(subscriptionManager)
-                .environmentObject(oneSignalManager)
-                .environmentObject(locationManager)
+                .environmentObject(appState.authManager)
+                .environmentObject(appState.subscriptionManager)
+                .environmentObject(appState.oneSignalManager)
+                .environmentObject(appState.locationManager)
+                .environmentObject(appState.cameraManager)
+                .environmentObject(appState.matchingManager)
                 .preferredColorScheme(.dark) // Force dark mode for brand consistency
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToPulse)) { notification in
                     handleNotificationNavigation(.navigateToPulse, data: notification.object)
@@ -38,6 +37,10 @@ struct PulseSwiftApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToCamera)) { notification in
                     handleNotificationNavigation(.navigateToCamera, data: notification.object)
+                }
+                .onOpenURL { url in
+                    // Handle Google Sign In URL callbacks
+                    GIDSignIn.sharedInstance.handle(url)
                 }
         }
     }
@@ -88,16 +91,28 @@ struct PulseSwiftApp: App {
             return
         }
         
-        var error: Unmanaged<CFError>?
-        let success = CTFontManagerRegisterGraphicsFont(font, &error)
-        
-        if success {
-            print("✅ \(fontName) font registered successfully")
-        } else {
-            if let error = error?.takeRetainedValue() {
-                print("❌ \(fontName) font registration failed: \(error)")
+        // Use modern API for iOS 18+, fallback for older versions
+        if #available(iOS 18.0, *) {
+            // Modern approach - no error handling needed as it doesn't throw
+            let fontDescriptors = CTFontManagerCreateFontDescriptorsFromData(fontData)
+            if CFArrayGetCount(fontDescriptors) > 0 {
+                print("✅ \(fontName) font registered successfully (iOS 18+)")
             } else {
-                print("❌ \(fontName) font registration failed: Unknown error")
+                print("❌ \(fontName) font registration failed (iOS 18+)")
+            }
+        } else {
+            // Fallback for iOS 17 and earlier
+            var error: Unmanaged<CFError>?
+            let success = CTFontManagerRegisterGraphicsFont(font, &error)
+            
+            if success {
+                print("✅ \(fontName) font registered successfully")
+            } else {
+                if let error = error?.takeRetainedValue() {
+                    print("❌ \(fontName) font registration failed: \(error)")
+                } else {
+                    print("❌ \(fontName) font registration failed: Unknown error")
+                }
             }
         }
     }

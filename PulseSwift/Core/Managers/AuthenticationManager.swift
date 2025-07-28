@@ -101,6 +101,8 @@ class AuthenticationManager: ObservableObject {
            let clientId = plist["CLIENT_ID"] as? String {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
             print("✅ Google Sign In configured with client ID: \(clientId)")
+            print("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+            print("🔍 Expected Bundle ID: com.brennen.PulseSwift")
         } else {
             print("❌ Failed to configure Google Sign In - Google.plist not found or invalid")
         }
@@ -216,35 +218,56 @@ class AuthenticationManager: ObservableObject {
     }
     
     func handleAppleSignInError(_ error: Error) {
-        print("❌ Apple Sign-In Error: \(error)")
+        print("🍎 === APPLE SIGN IN ERROR DEBUG ===")
+        print("🔍 Error: \(error)")
+        print("🔍 Localized Description: \(error.localizedDescription)")
+        print("🔍 Error Type: \(type(of: error))")
+        
         isLoading = false
         appleSignInDelegate = nil // Clear delegate
+        
         if let authError = error as? ASAuthorizationError {
+            print("🔍 ASAuthorizationError Code: \(authError.code)")
+            print("🔍 Raw Value: \(authError.code.rawValue)")
+            print("🔍 User Info: \(authError.userInfo)")
+            
             switch authError.code {
             case .canceled:
+                print("🔍 Apple Sign In: User canceled")
                 errorMessage = nil // User canceled, don't show error
             case .failed:
+                print("🔍 Apple Sign In: Failed")
                 errorMessage = "Apple Sign In failed"
             case .invalidResponse:
+                print("🔍 Apple Sign In: Invalid response")
                 errorMessage = "Invalid response from Apple"
             case .notHandled:
+                print("🔍 Apple Sign In: Not handled")
                 errorMessage = "Apple Sign In not handled"
             case .unknown:
+                print("🔍 Apple Sign In: Unknown error")
                 errorMessage = "Unknown Apple Sign In error"
             case .notInteractive:
+                print("🔍 Apple Sign In: Not interactive")
                 errorMessage = "Apple Sign In not available"
             case .matchedExcludedCredential:
+                print("🔍 Apple Sign In: Matched excluded credential")
                 errorMessage = "Apple Sign In credential excluded"
             case .credentialImport:
+                print("🔍 Apple Sign In: Credential import error")
                 errorMessage = "Apple Sign In credential import error"
             case .credentialExport:
+                print("🔍 Apple Sign In: Credential export error")
                 errorMessage = "Apple Sign In credential export error"
             @unknown default:
+                print("🔍 Apple Sign In: Unknown default case")
                 errorMessage = "Apple Sign In error occurred"
             }
         } else {
+            print("🔍 Non-ASAuthorizationError type")
             errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
         }
+        print("🍎 === END APPLE SIGN IN ERROR DEBUG ===")
     }
     
     // MARK: - Google Sign In
@@ -279,6 +302,11 @@ class AuthenticationManager: ObservableObject {
                 
                 if let error = error {
                     print("❌ Google Sign In error: \(error.localizedDescription)")
+                    if let nsError = error as NSError? {
+                        print("🔍 Error domain: \(nsError.domain)")
+                        print("🔍 Error code: \(nsError.code)")
+                        print("🔍 Error userInfo: \(nsError.userInfo)")
+                    }
                     self.errorMessage = "Google Sign In failed: \(error.localizedDescription)"
                     self.isLoading = false
                     return
@@ -617,7 +645,7 @@ class AuthenticationManager: ObservableObject {
         isAuthenticated = false
         currentUser = nil
         
-        if let token = keychainService.getToken() {
+        if keychainService.getToken() != nil {
             print("🔑 Found existing token, validating...")
             isLoading = true
             

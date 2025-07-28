@@ -16,7 +16,7 @@ class OneSignalManager: ObservableObject {
     @Published var pushToken: String?
     @Published var notificationPermissionStatus: String = "not_determined"
     
-    private let appId = "YOUR_ONESIGNAL_APP_ID" // TODO: Replace with your actual OneSignal App ID
+    private let appId = "03f4b9ce-1bbb-4f0f-a244-4dbd85f22469" // Your OneSignal App ID
     
     init() {
         setupOneSignal()

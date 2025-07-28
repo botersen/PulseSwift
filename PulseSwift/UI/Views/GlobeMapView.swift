@@ -19,7 +19,7 @@ struct GlobeMapView: View {
             VStack {
                 // Header
                 Text("PULSE")
-                    .font(.custom("MonumentExtended-Regular", size: 24))
+                    .font(.custom("Special Gothic Expanded One", size: 24))
                     .fontWeight(.bold)
                     .foregroundColor(PulseTheme.Colors.primary)
                     .padding(.top, 60)
