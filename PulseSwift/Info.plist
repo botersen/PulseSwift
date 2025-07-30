@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>com.brennen.PulseSwift</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -17,6 +15,14 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string></string>
+	<key>OneSignalAppID</key>
+	<string>03f4b9ce-1bbb-4f0f-a244-4dbd85f22469</string>
+	<key>SupabaseAnonKey</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sa21oenR1YnpibmtqamdrcG9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNzIzMDAsImV4cCI6MjA2ODk0ODMwMH0.W2tAupHuyUIrpWNHMC3-XY2m15pCoz2QRoTbRITuqg0</string>
+	<key>SupabaseURL</key>
+	<string>https://nlkmhztubzbnkjjgkpop.supabase.co</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>SpecialGothicExpandedOne-Regular.ttf</string>

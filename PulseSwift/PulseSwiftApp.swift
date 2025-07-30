@@ -11,40 +11,17 @@ import GoogleSignIn
 
 @main
 struct PulseSwiftApp: App {
-    @StateObject private var appState = AppState()
     
     init() {
-        // Register custom font at app startup
-        registerCustomFonts()
-        
-        #if DEBUG
-        // Test font loading after registration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            Font.testSpecialGothicFont()
-        }
-        #endif
+        // Setup dependencies
+        DIContainer.shared.setupServices()
+        setupAppConfigurations()
     }
     
     var body: some Scene {
         WindowGroup {
-            AppRootView()
-                .environmentObject(appState)
-                .environmentObject(appState.authManager)
-                .environmentObject(appState.subscriptionManager)
-                .environmentObject(appState.oneSignalManager)
-                .environmentObject(appState.locationManager)
-                .environmentObject(appState.cameraManager)
-                .environmentObject(appState.matchingManager)
+            AppCoordinator()
                 .preferredColorScheme(.dark) // Force dark mode for brand consistency
-                .onReceive(NotificationCenter.default.publisher(for: .navigateToPulse)) { notification in
-                    handleNotificationNavigation(.navigateToPulse, data: notification.object)
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .navigateToMatch)) { notification in
-                    handleNotificationNavigation(.navigateToMatch, data: notification.object)
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .navigateToCamera)) { notification in
-                    handleNotificationNavigation(.navigateToCamera, data: notification.object)
-                }
                 .onOpenURL { url in
                     // Handle Google Sign In URL callbacks
                     GIDSignIn.sharedInstance.handle(url)
@@ -52,75 +29,57 @@ struct PulseSwiftApp: App {
         }
     }
     
-    // MARK: - Notification Navigation Handling
-    
-    private func handleNotificationNavigation(_ type: Notification.Name, data: Any?) {
-        // Handle deep linking from push notifications
-        switch type {
-        case .navigateToPulse:
-            // Navigate to specific pulse
-            appState.navigateTo(.main)
-            print("🔔 Navigating to pulse from notification")
-            
-        case .navigateToMatch:
-            // Navigate to match/conversation
-            appState.navigateTo(.main)
-            print("🔔 Navigating to match from notification")
-            
-        case .navigateToCamera:
-            // Navigate to camera to send pulse
-            appState.navigateTo(.main)
-            print("🔔 Navigating to camera from notification")
-            
-        default:
-            break
-        }
+    // MARK: - Setup Methods
+    private func setupAppConfigurations() {
+        // Register custom fonts
+        registerCustomFonts()
+        
+        // Setup OneSignal
+        setupNotifications()
+        
+        print("✅ PulseSwiftApp: App configurations complete")
     }
     
     private func registerCustomFonts() {
-        // Register Special Gothic font
-        registerFont(fileName: "SpecialGothicExpandedOne-Regular", fontName: "Special Gothic Expanded One")
-        
-        // Register DM Mono font
-        registerFont(fileName: "DMMono-Regular", fontName: "DM Mono")
+        // Font registration happens automatically via Info.plist
+        // But we can verify they're available
+        #if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if UIFont(name: "Special Gothic Expanded One", size: 16) != nil {
+                print("✅ PulseSwiftApp: Special Gothic font available")
+            } else {
+                print("⚠️ PulseSwiftApp: Special Gothic font not found")
+            }
+            
+            if UIFont(name: "DM Mono", size: 16) != nil {
+                print("✅ PulseSwiftApp: DM Mono font available")
+            } else {
+                print("⚠️ PulseSwiftApp: DM Mono font not found")
+            }
+        }
+        #endif
     }
     
-    private func registerFont(fileName: String, fontName: String) {
-        guard let fontURL = Bundle.main.url(forResource: fileName, withExtension: "ttf") else {
-            print("❌ \(fontName) font file not found in bundle")
+    private func setupNotifications() {
+        // Read OneSignal App ID from Info.plist
+        guard let infoDictionary = Bundle.main.infoDictionary,
+              let oneSignalAppId = infoDictionary["OneSignalAppID"] as? String,
+              oneSignalAppId != "YOUR_ONESIGNAL_APP_ID" else {
+            print("⚠️ PulseSwiftApp: OneSignal App ID not configured in Info.plist")
+            print("⚠️ Please add your real OneSignal App ID to Info.plist")
             return
         }
         
-        guard let fontData = NSData(contentsOf: fontURL),
-              let provider = CGDataProvider(data: fontData),
-              let font = CGFont(provider) else {
-            print("❌ Could not create CGFont for \(fontName)")
-            return
-        }
+        // OneSignal initialization
+        OneSignal.initialize(oneSignalAppId, withLaunchOptions: nil)
         
-        // Use modern API for iOS 18+, fallback for older versions
-        if #available(iOS 18.0, *) {
-            // Modern approach - no error handling needed as it doesn't throw
-            let fontDescriptors = CTFontManagerCreateFontDescriptorsFromData(fontData)
-            if CFArrayGetCount(fontDescriptors) > 0 {
-                print("✅ \(fontName) font registered successfully (iOS 18+)")
-            } else {
-                print("❌ \(fontName) font registration failed (iOS 18+)")
-            }
-        } else {
-            // Fallback for iOS 17 and earlier
-            var error: Unmanaged<CFError>?
-            let success = CTFontManagerRegisterGraphicsFont(font, &error)
-            
-            if success {
-                print("✅ \(fontName) font registered successfully")
-            } else {
-                if let error = error?.takeRetainedValue() {
-                    print("❌ \(fontName) font registration failed: \(error)")
-                } else {
-                    print("❌ \(fontName) font registration failed: Unknown error")
-                }
-            }
-        }
+        // Request notification permission
+        OneSignal.Notifications.requestPermission({ accepted in
+            print("User accepted notifications: \(accepted)")
+        }, fallbackToSettings: true)
+        
+        print("✅ PulseSwiftApp: OneSignal configured with App ID: \(oneSignalAppId)")
     }
 }
+
+// Use AppCoordinator from Architecture/UI/PulseApp.swift
