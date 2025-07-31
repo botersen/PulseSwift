@@ -40,10 +40,11 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
                 locationManager.requestWhenInUseAuthorization()
             case .denied, .restricted:
                 errorMessage = "Location access is required for pulse matching. Please enable it in Settings."
-            case .authorizedWhenInUse:
-                startLocationUpdates()
-            case .authorizedAlways:
-                startLocationUpdates()
+            case .authorizedWhenInUse, .authorizedAlways:
+                // Start location updates on background thread to avoid main thread warning
+                Task.detached(priority: .background) { @Sendable [weak self] in
+                    self?.startLocationUpdates()
+                }
             @unknown default:
                 errorMessage = "Unknown location authorization status"
             }
@@ -52,23 +53,31 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
     
     func startLocationUpdates() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            errorMessage = "Location permission not granted"
+            DispatchQueue.main.async { @Sendable [weak self] in
+                self?.errorMessage = "Location permission not granted"
+            }
             return
         }
         
         guard CLLocationManager.locationServicesEnabled() else {
-            errorMessage = "Location services are disabled"
+            DispatchQueue.main.async { @Sendable [weak self] in
+                self?.errorMessage = "Location services are disabled"
+            }
             return
         }
         
-        locationManager.startUpdatingLocation()
-        isLocationUpdateActive = true
+        DispatchQueue.main.async { @Sendable [weak self] in
+            self?.locationManager.startUpdatingLocation()
+            self?.isLocationUpdateActive = true
+        }
         print("✅ LocationManager: Started location updates")
     }
     
     func stopLocationUpdates() {
-        locationManager.stopUpdatingLocation()
-        isLocationUpdateActive = false
+        DispatchQueue.main.async { @Sendable [weak self] in
+            self?.locationManager.stopUpdatingLocation()
+            self?.isLocationUpdateActive = false
+        }
         print("✅ LocationManager: Stopped location updates")
     }
     
@@ -79,7 +88,9 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
         }
         
         return await withCheckedContinuation { continuation in
-            locationManager.requestLocation()
+            DispatchQueue.main.async { @Sendable [weak self] in
+                self?.locationManager.requestLocation()
+            }
             
             // Set a timeout
             DispatchQueue.main.asyncAfter(deadline: .now() + 10) { @Sendable [weak self] in
@@ -166,17 +177,23 @@ extension LocationManager: CLLocationManagerDelegate {
                 
             case .denied, .restricted:
                 self?.errorMessage = "Location access denied. Enable in Settings to use pulse matching."
-                self?.stopLocationUpdates()
+                DispatchQueue.global(qos: .background).async {
+                    self?.stopLocationUpdates()
+                }
                 print("❌ LocationManager: Authorization denied/restricted")
                 
             case .authorizedWhenInUse:
                 self?.errorMessage = nil
-                self?.startLocationUpdates()
+                DispatchQueue.global(qos: .background).async {
+                    self?.startLocationUpdates()
+                }
                 print("✅ LocationManager: Authorization granted (when in use)")
                 
             case .authorizedAlways:
                 self?.errorMessage = nil
-                self?.startLocationUpdates()
+                DispatchQueue.global(qos: .background).async {
+                    self?.startLocationUpdates()
+                }
                 print("✅ LocationManager: Authorization granted (always)")
                 
             @unknown default:

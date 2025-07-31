@@ -76,15 +76,24 @@ enum StarColor: CaseIterable {
     case yellow
     case brightYellow
     case gold
+    case blue      // User location
+    case green     // New pulse matches  
+    case gray      // Past pulse matches
     
     var rgba: (red: Float, green: Float, blue: Float, alpha: Float) {
         switch self {
         case .yellow:
             return (1.0, 1.0, 0.0, 0.8)
         case .brightYellow:
-            return (1.0, 1.0, 0.2, 0.9)
+            return (1.0, 1.0, 0.2, 0.9) // Active pulse matches
         case .gold:
             return (1.0, 0.84, 0.0, 1.0)
+        case .blue:
+            return (0.0, 0.5, 1.0, 1.0) // User location pin
+        case .green:
+            return (0.0, 1.0, 0.0, 1.0) // New pulse matches
+        case .gray:
+            return (0.6, 0.6, 0.6, 0.7) // Past pulse matches
         }
     }
 }
@@ -98,15 +107,19 @@ struct GlobeStarEntity {
     let glowIntensity: Float
     let pulseMatch: PulseMatchEntity
     
-    // 3D coordinates for SceneKit
+    // 3D coordinates for SceneKit with accurate Earth mapping
     var sphereCoordinates: (x: Float, y: Float, z: Float) {
         let earthRadius: Float = 1.0 // SceneKit sphere radius
+        
+        // Convert degrees to radians
         let lat = Float(location.latitude) * .pi / 180.0
         let lon = Float(location.longitude) * .pi / 180.0
         
+        // Standard spherical to Cartesian coordinate conversion
+        // This matches the UV mapping of equirectangular Earth textures
         let x = earthRadius * cos(lat) * cos(lon)
         let y = earthRadius * sin(lat)
-        let z = earthRadius * cos(lat) * sin(lon)
+        let z = -earthRadius * cos(lat) * sin(lon) // Negative for correct orientation
         
         return (x, y, z)
     }

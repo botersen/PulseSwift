@@ -25,9 +25,9 @@ final class CameraUseCases: CameraUseCasesProtocol {
     func initializeCamera() async throws {
         guard !isInitialized else { return }
         
-        // Business rule: Request permission before starting session
+        // Business rule: Request permission (which also starts session if authorized)
         try await cameraRepository.requestPermission()
-        try await cameraRepository.startSession()
+        // No need to call startSession again - requestPermission already starts it
         
         isInitialized = true
         logCameraEvent("initialized", success: true)

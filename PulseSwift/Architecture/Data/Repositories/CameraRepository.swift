@@ -91,7 +91,16 @@ final class CameraRepository: NSObject, CameraRepositoryProtocol {
                         try self.configureSession()
                     }
                     
-                    self._captureSession?.startRunning()
+                    // Guard against starting an already running session
+                    guard let session = self._captureSession, !session.isRunning else {
+                        print("📷 CameraRepository: Session already running, skipping start")
+                        DispatchQueue.main.async {
+                            continuation.resume()
+                        }
+                        return
+                    }
+                    
+                    session.startRunning()
                     
                     DispatchQueue.main.async { [weak self] in
                         self?.updateCameraState(isSessionRunning: true)

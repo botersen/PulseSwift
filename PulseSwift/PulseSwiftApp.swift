@@ -8,6 +8,7 @@
 import SwiftUI
 import OneSignalFramework
 import GoogleSignIn
+import AVFoundation
 
 @main
 struct PulseSwiftApp: App {
@@ -16,6 +17,9 @@ struct PulseSwiftApp: App {
         // Setup dependencies
         DIContainer.shared.setupServices()
         setupAppConfigurations()
+        
+        // Start camera preloading immediately for instant startup
+        preloadCameraForInstantStartup()
     }
     
     var body: some Scene {
@@ -79,6 +83,34 @@ struct PulseSwiftApp: App {
         }, fallbackToSettings: true)
         
         print("✅ PulseSwiftApp: OneSignal configured with App ID: \(oneSignalAppId)")
+    }
+    
+    // MARK: - Camera Preloading
+    private func preloadCameraForInstantStartup() {
+        // Only preload if camera permissions are already granted
+        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        guard cameraStatus == .authorized else {
+            print("📷 PulseSwiftApp: Camera not authorized, skipping preload")
+            return
+        }
+        
+        print("🚀 PulseSwiftApp: Starting camera preload for instant startup...")
+        
+        // Use background queue to avoid blocking app launch
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Get camera repository from DI container
+            let cameraRepository = DIContainer.shared.resolve(CameraRepositoryProtocol.self)
+            
+            // Start camera session in background
+            Task {
+                do {
+                    try await cameraRepository.requestPermission()
+                    print("✅ PulseSwiftApp: Camera preloaded successfully")
+                } catch {
+                    print("⚠️ PulseSwiftApp: Camera preload failed: \(error)")
+                }
+            }
+        }
     }
 }
 

@@ -309,16 +309,14 @@ final class MediaProcessor: MediaProcessorProtocol {
         } else {
             // Fallback for iOS 17 and earlier
             return try await withCheckedThrowingContinuation { continuation in
-                // Use a weak reference to exportSession to avoid capturing it strongly in the closure
-                exportSession.exportAsynchronously { [outputURL] in
-                    DispatchQueue.main.async {
-                        let status = exportSession.status
-                        let error = exportSession.error
-                        switch status {
+                // Capture the session directly in the closure to avoid sendable issues
+                exportSession.exportAsynchronously {
+                    Task { @MainActor in
+                        switch exportSession.status {
                         case .completed:
                             continuation.resume(returning: outputURL)
                         case .failed:
-                            continuation.resume(throwing: error ?? MediaError.exportFailed)
+                            continuation.resume(throwing: exportSession.error ?? MediaError.exportFailed)
                         case .cancelled:
                             continuation.resume(throwing: MediaError.exportCancelled)
                         default:

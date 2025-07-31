@@ -72,7 +72,7 @@ struct DeveloperToolsPanel: View {
                     }
                     
                     DevButton(title: "Profile") {
-                        appFlowViewModel.currentFlow = .profileCustomization
+                        appFlowViewModel.currentFlow = .profileSetup
                     }
                     
                     DevButton(title: "Camera") {
@@ -175,12 +175,9 @@ extension AppFlow {
         case .loading: return "Loading"
         case .authentication: return "Auth"
         case .profileSetup: return "Profile Setup"
-        case .capturePulse: return "Capture Pulse"
+        case .capturePulse: return "Camera"
         case .globe: return "Globe"
         case .settings: return "Settings"
-        case .profileCustomization: return "Profile Customization"
-        case .camera: return "Camera"
-        case .mainApp: return "Main App"
         }
     }
 }

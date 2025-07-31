@@ -69,14 +69,22 @@ class GlobeViewModel: ObservableObject {
         Task {
             await loadPulseMatches()
             await loadActivePulses()
-            await requestLocationPermission()
+            
+            // Request location permission on background thread
+            Task.detached(priority: .background) { @Sendable [weak self] in
+                await self?.requestLocationPermission()
+            }
         }
     }
     
     // MARK: - Public Methods
     func startRealtimeUpdates() {
         setupRealtimeSubscriptions()
-        startLocationUpdates()
+        
+        // Start location updates on background thread
+        Task.detached(priority: .background) { @Sendable [weak self] in
+            await self?.startLocationUpdates()
+        }
     }
     
     func stopRealtimeUpdates() {
@@ -174,10 +182,12 @@ class GlobeViewModel: ObservableObject {
     }
     
     // MARK: - Location Updates
-    private func startLocationUpdates() {
-        locationUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                await self?.updateCurrentLocation()
+    private func startLocationUpdates() async {
+        await MainActor.run { [weak self] in
+            self?.locationUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.updateCurrentLocation()
+                }
             }
         }
     }
@@ -284,6 +294,187 @@ class GlobeViewModel: ObservableObject {
 
 // MARK: - Mock Data (for testing)
 extension GlobeViewModel {
+    
+    func addTestPulseLocations() {
+        // Simulate real-time pulse activity for demo
+        addUserLocationPin()
+        addActivePulseMatches()
+        addPastPulseMatches()
+    }
+    
+    private func addUserLocationPin() {
+        // Add user's current location as a special pin
+        guard let userLocation = locationManager.currentLocation else {
+            // Fallback to SF for demo
+            let demoLocation = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+            addUserPin(at: demoLocation)
+            return
+        }
+        addUserPin(at: userLocation.coordinate)
+    }
+    
+    private func addUserPin(at location: CLLocationCoordinate2D) {
+        let userPin = GlobeStarEntity(
+            id: UUID(),
+            location: location,
+            size: 1.2, // Larger for user location
+            color: .blue, // Distinctive color for user
+            glowIntensity: 1.0,
+            pulseMatch: nil // No match data for user location
+        )
+        
+        DispatchQueue.main.async {
+            // Add user pin to existing stars or replace if exists
+            self.stars.removeAll { $0.color == .blue } // Remove old user pin
+            self.stars.append(userPin)
+            print("📍 Added user location pin at: \(location.latitude), \(location.longitude)")
+        }
+    }
+    
+    private func addActivePulseMatches() {
+        // Simulate active pulse matches (bright, pulsing)
+        let activeLocations = [
+            ("Tokyo", CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)),
+            ("London", CLLocationCoordinate2D(latitude: 51.5074, longitude: -0.1278)),
+            ("Sydney", CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093))
+        ]
+        
+        let activeStars = activeLocations.enumerated().map { index, location in
+            let mockMatch = PulseMatchEntity(
+                id: UUID(),
+                userId: UUID(),
+                partnerId: UUID(),
+                userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // User in SF
+                partnerLocation: location.1,
+                pulseDuration: Double(15 + index * 5), // Active = shorter duration
+                photoCount: 1,
+                sessionStartedAt: Date(), // Just started
+                sessionEndedAt: nil, // Still active
+                createdAt: Date()
+            )
+            
+            return GlobeStarEntity(
+                id: UUID(),
+                location: location.1,
+                size: Float(1.0),
+                color: .brightYellow, // Bright yellow for active matches
+                glowIntensity: Float(1.0), // Full glow for active
+                pulseMatch: mockMatch
+            )
+        }
+        
+        DispatchQueue.main.async {
+            self.stars.append(contentsOf: activeStars)
+            print("⚡ Added \(activeStars.count) active pulse matches")
+        }
+    }
+    
+    private func addPastPulseMatches() {
+        // Simulate past pulse matches (dimmer, smaller)
+        let pastLocations = [
+            ("New York City", CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)),
+            ("São Paulo", CLLocationCoordinate2D(latitude: -23.5505, longitude: -46.6333)),
+            ("Cairo", CLLocationCoordinate2D(latitude: 30.0444, longitude: 31.2357)),
+            ("Mumbai", CLLocationCoordinate2D(latitude: 19.0760, longitude: 72.8777)),
+            ("Berlin", CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050))
+        ]
+        
+        let pastStars = pastLocations.enumerated().map { index, location in
+            let mockMatch = PulseMatchEntity(
+                id: UUID(),
+                userId: UUID(),
+                partnerId: UUID(),
+                userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // User in SF
+                partnerLocation: location.1,
+                pulseDuration: Double(60 + index * 30), // Longer past conversations
+                photoCount: index + 1,
+                sessionStartedAt: Date().addingTimeInterval(-Double(index * 3600 * 24)), // Days ago
+                sessionEndedAt: Date().addingTimeInterval(-Double(index * 3600 * 24 - 300)), // Completed
+                createdAt: Date().addingTimeInterval(-Double(index * 86400))
+            )
+            
+            return GlobeStarEntity(
+                id: UUID(),
+                location: location.1,
+                size: Float(0.6 + Double(index) * 0.1), // Smaller for past matches
+                color: .gray, // Dimmed color for past matches
+                glowIntensity: Float(0.3 + Double(index) * 0.1), // Low glow
+                pulseMatch: mockMatch
+            )
+        }
+        
+        DispatchQueue.main.async {
+            self.stars.append(contentsOf: pastStars)
+            print("📍 Added \(pastStars.count) past pulse matches")
+        }
+    }
+    
+    // MARK: - Real-time Updates
+    func startRealTimeUpdates() {
+        // Start timer to simulate real-time pulse activity
+        Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            self?.simulateNewPulseActivity()
+        }
+        print("🎮 Started real-time pulse simulation")
+    }
+    
+    private func simulateNewPulseActivity() {
+        // Randomly add new pulse matches to simulate real activity
+        let randomLocations = [
+            CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522), // Paris
+            CLLocationCoordinate2D(latitude: -34.6037, longitude: -58.3816), // Buenos Aires
+            CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074), // Beijing
+            CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6176), // Moscow
+            CLLocationCoordinate2D(latitude: -26.2041, longitude: 28.0473) // Johannesburg
+        ]
+        
+        guard let randomLocation = randomLocations.randomElement() else { return }
+        
+        let newMatch = PulseMatchEntity(
+            id: UUID(),
+            userId: UUID(),
+            partnerId: UUID(),
+            userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            partnerLocation: randomLocation,
+            pulseDuration: Double.random(in: 10...30),
+            photoCount: 1,
+            sessionStartedAt: Date(),
+            sessionEndedAt: nil,
+            createdAt: Date()
+        )
+        
+        let newStar = GlobeStarEntity(
+            id: UUID(),
+            location: randomLocation,
+            size: 1.2, // Larger for new matches
+            color: .green, // Bright green for new matches
+            glowIntensity: 1.0,
+            pulseMatch: newMatch
+        )
+        
+        DispatchQueue.main.async {
+            self.stars.append(newStar)
+            self.totalPulseCount += 1
+            self.activePulseCount += 1
+            print("✨ New pulse match added at: \(randomLocation.latitude), \(randomLocation.longitude)")
+            
+            // Convert to past match after 30 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+                if let index = self.stars.firstIndex(where: { $0.id == newStar.id }) {
+                    self.stars[index] = GlobeStarEntity(
+                        id: newStar.id,
+                        location: newStar.location,
+                        size: 0.8,
+                        color: .gray,
+                        glowIntensity: 0.4,
+                        pulseMatch: newStar.pulseMatch
+                    )
+                    self.activePulseCount = max(0, self.activePulseCount - 1)
+                    print("⏰ Pulse match moved to past: \(randomLocation.latitude), \(randomLocation.longitude)")
+                }
+            }
+        }
+    }
     func loadMockData() {
         // Create mock pulse matches for testing
         let mockMatches = [

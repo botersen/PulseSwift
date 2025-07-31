@@ -119,18 +119,28 @@ class CameraPreviewUIView: UIView {
             return 
         }
         
+        // Prevent redundant connections to the same session
+        if let existingLayer = previewLayer, existingLayer.session === session {
+            print("📷 CameraPreviewUIView: Already connected to this session, skipping")
+            return
+        }
+        
         // Remove existing layer
         previewLayer?.removeFromSuperlayer()
         
-        // Create new preview layer
-        let newPreviewLayer = AVCaptureVideoPreviewLayer(session: session)
-        newPreviewLayer.frame = bounds
-        newPreviewLayer.videoGravity = .resizeAspectFill
-        
-        layer.addSublayer(newPreviewLayer)
-        self.previewLayer = newPreviewLayer
-        
-        print("✅ CameraPreviewUIView: Connected to camera session")
+        // Create new preview layer on background queue to avoid main thread blocking
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let newPreviewLayer = AVCaptureVideoPreviewLayer(session: session)
+            newPreviewLayer.videoGravity = .resizeAspectFill
+            
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                newPreviewLayer.frame = self.bounds
+                self.layer.addSublayer(newPreviewLayer)
+                self.previewLayer = newPreviewLayer
+                print("✅ CameraPreviewUIView: Connected to camera session")
+            }
+        }
     }
 }
 

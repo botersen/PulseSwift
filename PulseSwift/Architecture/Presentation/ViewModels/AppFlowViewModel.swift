@@ -98,7 +98,7 @@ final class AppFlowViewModel: ObservableObject {
     }
     
     func goDirectlyToCamera() {
-        currentFlow = .camera
+        currentFlow = .capturePulse
         print("🔧 AppFlowViewModel: Direct to camera (DEBUG)")
     }
     #endif
@@ -168,11 +168,11 @@ final class AppFlowViewModel: ObservableObject {
                     // User is signed in
                     if self.hasCompletedOnboarding {
                         // Returning user → Direct to main app
-                        self.currentFlow = .mainApp
+                        self.currentFlow = .capturePulse
                         print("✅ AppFlowViewModel: Returning user → Camera")
                     } else {
                         // Signed in but hasn't completed onboarding → Profile customization
-                        self.currentFlow = .profileCustomization
+                        self.currentFlow = .profileSetup
                         print("✅ AppFlowViewModel: Authenticated but incomplete onboarding → Profile")
                     }
                 } else {
@@ -205,53 +205,31 @@ final class AppFlowViewModel: ObservableObject {
     }
 }
 
-// MARK: - App Flow States
+// MARK: - App Flow States (Streamlined)
 enum AppFlow {
     case splash
     case authentication
-    case profileCustomization
-    case camera
-    case mainApp // New state for camera+globe tabbed interface
-    case profileSetup
-    case capturePulse
-    case globe
-    case settings
-    case loading // (optional, for background tasks)
+    case profileSetup     // Profile customization
+    case capturePulse     // Main camera screen
+    case globe           // Globe screen
+    case settings        // Settings screen
+    case loading         // Loading states
 }
 
-// MARK: - Flow State Helpers
+// MARK: - Flow State Helpers (Streamlined)
 extension AppFlowViewModel {
-    var shouldShowAuthFlow: Bool {
-        currentFlow == .authentication
-    }
-    
-    var shouldShowProfileCustomization: Bool {
-        currentFlow == .profileCustomization
-    }
-    
-    var shouldShowCamera: Bool {
-        currentFlow == .camera
-    }
-    
-    var shouldShowMainApp: Bool {
-        currentFlow == .mainApp
-    }
-    
     var isLoading: Bool {
         currentFlow == .loading
     }
     
-    // MARK: - Navigation Methods
-    func navigateToMainApp() {
-        currentFlow = .mainApp
-        print("✅ AppFlowViewModel: Navigated to main app")
+    // MARK: - Navigation Methods  
+    func navigateToGlobe() {
+        currentFlow = .globe
+        print("✅ AppFlowViewModel: Navigated to globe")
     }
     
-    func navigateToGlobe() {
-        // For now, globe is part of mainApp flow
-        // This could be expanded if globe becomes standalone
-        if currentFlow != .mainApp {
-            navigateToMainApp()
-        }
+    func navigateToSettings() {
+        currentFlow = .settings
+        print("✅ AppFlowViewModel: Navigated to settings")
     }
 } 

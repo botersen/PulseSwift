@@ -61,15 +61,22 @@ final class CameraViewModel: ObservableObject {
     init() {
         setupStateBinding()
         setupNotificationObservers()
-        // Check if we can pre-warm for instant startup
-        prepareForInstantStartup()
+        // Don't pre-initialize in init - let onAppear handle it explicitly
+        print("📷 CameraViewModel: Initialized (waiting for explicit startup)")
     }
     
     // MARK: - Lifecycle Methods
     func onAppear() {
-        print("📷 CameraViewModel: onAppear (initialized: \(isInitialized))")
+        print("📷 CameraViewModel: onAppear (initialized: \(isInitialized), sessionRunning: \(cameraState.isSessionRunning))")
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         permissionStatus = CameraPermissionStatus(status)
+        
+        // Check if camera is already preloaded and running
+        if cameraState.isSessionRunning && permissionStatus == .authorized {
+            print("✅ CameraViewModel: Camera already preloaded and running - instant display!")
+            isInitialized = true
+            return
+        }
         
         // Only initialize if not already done (could be pre-warmed)
         if !isInitialized && permissionStatus == .authorized {
@@ -257,28 +264,7 @@ final class CameraViewModel: ObservableObject {
         }
     }
     
-    private func prepareForInstantStartup() {
-        // Only pre-initialize if camera permissions are already granted
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        if status == .authorized {
-            print("📷 CameraViewModel: Pre-warming camera for instant startup")
-            // Check if this is a returning user for even faster initialization
-            let isReturningUser = UserDefaults.standard.string(forKey: "userAuthToken") != nil
-            let delay: UInt64 = isReturningUser ? 10_000_000 : 50_000_000 // 0.01s vs 0.05s
-            
-            Task {
-                try? await Task.sleep(nanoseconds: delay)
-                await MainActor.run {
-                    if !self.isInitialized {
-                        print("📷 CameraViewModel: Initializing camera (returning user: \(isReturningUser))")
-                        self.initializeCamera()
-                    }
-                }
-            }
-        } else {
-            print("📷 CameraViewModel: Permissions not granted, skipping pre-warm")
-        }
-    }
+
     
     private func setupNotificationObservers() {
         // Listen for camera pre-loading requests
