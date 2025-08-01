@@ -18,62 +18,32 @@ struct GlobeView: View {
             )
             .ignoresSafeArea()
             
-            // UI Overlays
+            // Live Pulse Location Overlay
             VStack {
-                // Top Controls
-                HStack {
-                    // Time Range Selector
-                    Picker("Time Range", selection: $globeViewModel.timeRange) {
-                        Text("24h").tag(GlobeViewStateEntity.TimeRange.last24Hours)
-                        Text("Week").tag(GlobeViewStateEntity.TimeRange.lastWeek)
-                        Text("Month").tag(GlobeViewStateEntity.TimeRange.lastMonth)
-                        Text("All").tag(GlobeViewStateEntity.TimeRange.allTime)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(8)
-                    
-                    Spacer()
-                    
-                    // Auto-rotation toggle
-                    Button(action: {
-                        globeViewModel.toggleAutoRotation()
-                    }) {
-                        Image(systemName: globeViewModel.isAutoRotating ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding()
-                
                 Spacer()
                 
-                // Bottom Stats
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Total Pulses")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
-                        Text("\(globeViewModel.totalPulseCount)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                    }
+                // Live Pulse Location Display
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("LIVE PULSE LOCATION")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white.opacity(0.8))
+                        .tracking(1)
                     
-                    Spacer()
-                    
-                    VStack(alignment: .trailing) {
-                        Text("Active Now")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
-                        Text("\(globeViewModel.activePulseCount)")
-                            .font(.title2)
+                    if globeViewModel.hasActivePulse {
+                        Text(globeViewModel.currentPulseLocation)
+                            .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.green)
+                            .foregroundColor(.yellow)
+                    } else {
+                        Text("No current pulses - tap left to send pulse")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.7))
                     }
                 }
                 .padding()
-                .background(Color.black.opacity(0.3))
+                .background(Color.black.opacity(0.4))
                 .cornerRadius(12)
                 .padding()
             }
@@ -521,28 +491,28 @@ struct GlobeSceneView: UIViewRepresentable {
             cgContext.fill(asia)
             cgContext.fill(australia)
         }
-    }
-}
-
-// MARK: - Coordinator
-class Coordinator: NSObject, SCNSceneRendererDelegate {
-    var parent: GlobeSceneView
-    private var starNodes: [UUID: SCNNode] = [:]
-    private var pulseLineNodes: [UUID: SCNNode] = [:]
-    
-    // Auto-rotation control
-    weak var sceneView: SCNView?
-    private var autoRotationTimer: Timer?
-    
-    init(_ parent: GlobeSceneView) {
-        self.parent = parent
+        }
     }
     
-    @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+    // MARK: - Coordinator
+    class Coordinator: NSObject, SCNSceneRendererDelegate {
+        var parent: GlobeSceneView
+        private var starNodes: [UUID: SCNNode] = [:]
+        private var pulseLineNodes: [UUID: SCNNode] = [:]
+        
+        // Auto-rotation control
+        weak var sceneView: SCNView?
+        private var autoRotationTimer: Timer?
+        
+        init(_ parent: GlobeSceneView) {
+            self.parent = parent
+        }
+        
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
         guard let sceneView = gesture.view as? SCNView else { return }
         let _ = gesture.location(in: sceneView)
-        
-        Task { @MainActor in
+            
+            Task { @MainActor in
             // Handle star selection logic here
         }
     }
@@ -554,126 +524,126 @@ class Coordinator: NSObject, SCNSceneRendererDelegate {
         } else if gesture.state == .ended {
             parent.viewModel.isAutoRotating = true
         }
-    }
-    
-    @MainActor func updateStars(_ stars: [GlobeStarEntity]) {
-        guard let scene = parent.viewModel.sceneView?.scene else { return }
+        }
         
+        @MainActor func updateStars(_ stars: [GlobeStarEntity]) {
+            guard let scene = parent.viewModel.sceneView?.scene else { return }
+            
         // Remove old star nodes
-        let currentStarIds = Set(stars.map { $0.id })
+            let currentStarIds = Set(stars.map { $0.id })
         let starsToRemove = starNodes.filter { !currentStarIds.contains($0.key) }
-        
+            
         for (_, node) in starsToRemove {
-            node.removeFromParentNode()
-        }
-        starNodes = starNodes.filter { currentStarIds.contains($0.key) }
-        
+                node.removeFromParentNode()
+            }
+            starNodes = starNodes.filter { currentStarIds.contains($0.key) }
+            
         // Add or update star nodes
-        for star in stars {
+            for star in stars {
             if starNodes[star.id] == nil {
-                let starNode = createStarNode(for: star)
-                starNodes[star.id] = starNode
-                scene.rootNode.addChildNode(starNode)
+                    let starNode = createStarNode(for: star)
+                    starNodes[star.id] = starNode
+                    scene.rootNode.addChildNode(starNode)
+                }
             }
         }
-    }
-    
-    @MainActor func updateActivePulses(_ pulses: [ActivePulseConnectionEntity]) {
-        guard let scene = parent.viewModel.sceneView?.scene else { return }
         
-        // Remove old pulse lines
-        let currentPulseIds = Set(pulses.map { $0.id })
-        let linesToRemove = pulseLineNodes.filter { !currentPulseIds.contains($0.key) }
-        
-        for (_, node) in linesToRemove {
-            node.removeFromParentNode()
-        }
-        pulseLineNodes = pulseLineNodes.filter { currentPulseIds.contains($0.key) }
-        
-        // Add or update pulse lines
-        for pulse in pulses where pulse.isActive {
-            if pulseLineNodes[pulse.id] == nil {
-                let lineNode = createPulseLineNode(for: pulse)
-                pulseLineNodes[pulse.id] = lineNode
-                scene.rootNode.addChildNode(lineNode)
+        @MainActor func updateActivePulses(_ pulses: [ActivePulseConnectionEntity]) {
+            guard let scene = parent.viewModel.sceneView?.scene else { return }
+            
+            // Remove old pulse lines
+            let currentPulseIds = Set(pulses.map { $0.id })
+            let linesToRemove = pulseLineNodes.filter { !currentPulseIds.contains($0.key) }
+            
+            for (_, node) in linesToRemove {
+                node.removeFromParentNode()
+            }
+            pulseLineNodes = pulseLineNodes.filter { currentPulseIds.contains($0.key) }
+            
+            // Add or update pulse lines
+            for pulse in pulses where pulse.isActive {
+                if pulseLineNodes[pulse.id] == nil {
+                    let lineNode = createPulseLineNode(for: pulse)
+                    pulseLineNodes[pulse.id] = lineNode
+                    scene.rootNode.addChildNode(lineNode)
+                }
             }
         }
-    }
-    
-    private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
-        // Create star geometry
+        
+        private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
+            // Create star geometry
         let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.02))
-        let starMaterial = SCNMaterial()
-        
-        let color = star.color.rgba
-        starMaterial.emission.contents = UIColor(
-            red: CGFloat(color.red),
-            green: CGFloat(color.green),
-            blue: CGFloat(color.blue),
-            alpha: CGFloat(color.alpha * star.glowIntensity)
-        )
-        starMaterial.diffuse.contents = UIColor.clear
-        starGeometry.materials = [starMaterial]
-        
-        let starNode = SCNNode(geometry: starGeometry)
-        starNode.name = star.id.uuidString
-        
-        // Position on sphere surface
-        let coords = star.sphereCoordinates
+            let starMaterial = SCNMaterial()
+            
+            let color = star.color.rgba
+            starMaterial.emission.contents = UIColor(
+                red: CGFloat(color.red),
+                green: CGFloat(color.green), 
+                blue: CGFloat(color.blue),
+                alpha: CGFloat(color.alpha * star.glowIntensity)
+            )
+            starMaterial.diffuse.contents = UIColor.clear
+            starGeometry.materials = [starMaterial]
+            
+            let starNode = SCNNode(geometry: starGeometry)
+            starNode.name = star.id.uuidString
+            
+            // Position on sphere surface
+            let coords = star.sphereCoordinates
         starNode.position = SCNVector3(coords.x * 1.01, coords.y * 1.01, coords.z * 1.01)
+            
+            // Add pulsing animation
+            let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
+            pulseAnimation.fromValue = 1.0
+            pulseAnimation.toValue = 1.3
+            pulseAnimation.duration = 2.0
+            pulseAnimation.autoreverses = true
+            pulseAnimation.repeatCount = .infinity
+            starNode.addAnimation(pulseAnimation, forKey: "pulse")
+            
+            return starNode
+        }
         
-        // Add pulsing animation
-        let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
-        pulseAnimation.fromValue = 1.0
-        pulseAnimation.toValue = 1.3
-        pulseAnimation.duration = 2.0
-        pulseAnimation.autoreverses = true
-        pulseAnimation.repeatCount = .infinity
-        starNode.addAnimation(pulseAnimation, forKey: "pulse")
+        private func createPulseLineNode(for pulse: ActivePulseConnectionEntity) -> SCNNode {
+            // Create line between two locations
+            let userCoords = convertToSphereCoordinates(pulse.userLocation)
+            let partnerCoords = convertToSphereCoordinates(pulse.partnerLocation)
+            
+            // Create curved line geometry
+            let path = UIBezierPath()
+            let userPoint = CGPoint(x: CGFloat(userCoords.x), y: CGFloat(userCoords.y))
+            let partnerPoint = CGPoint(x: CGFloat(partnerCoords.x), y: CGFloat(partnerCoords.y))
+            
+            path.move(to: userPoint)
+            path.addQuadCurve(to: partnerPoint, controlPoint: CGPoint(
+                x: (userPoint.x + partnerPoint.x) / 2,
+                y: max(userPoint.y, partnerPoint.y) + 0.3
+            ))
+            
+            let lineGeometry = SCNShape(path: path, extrusionDepth: 0.005)
+            let lineMaterial = SCNMaterial()
+            lineMaterial.emission.contents = UIColor.cyan.withAlphaComponent(CGFloat(pulse.pulseLineIntensity))
+            lineGeometry.materials = [lineMaterial]
+            
+            let lineNode = SCNNode(geometry: lineGeometry)
+            lineNode.name = "pulse_line_\(pulse.id.uuidString)"
+            
+            return lineNode
+        }
         
-        return starNode
-    }
-    
-    private func createPulseLineNode(for pulse: ActivePulseConnectionEntity) -> SCNNode {
-        // Create line between two locations  
-        let userCoords = convertToSphereCoordinates(pulse.userLocation)
-        let partnerCoords = convertToSphereCoordinates(pulse.partnerLocation)
-        
-        // Create curved line geometry
-        let path = UIBezierPath()
-        let userPoint = CGPoint(x: CGFloat(userCoords.x), y: CGFloat(userCoords.y))
-        let partnerPoint = CGPoint(x: CGFloat(partnerCoords.x), y: CGFloat(partnerCoords.y))
-        
-        path.move(to: userPoint)
-        path.addQuadCurve(to: partnerPoint, controlPoint: CGPoint(
-            x: (userPoint.x + partnerPoint.x) / 2,
-            y: max(userPoint.y, partnerPoint.y) + 0.3
-        ))
-        
-        let lineGeometry = SCNShape(path: path, extrusionDepth: 0.005)
-        let lineMaterial = SCNMaterial()
-        lineMaterial.emission.contents = UIColor.cyan.withAlphaComponent(CGFloat(pulse.pulseLineIntensity))
-        lineGeometry.materials = [lineMaterial]
-        
-        let lineNode = SCNNode(geometry: lineGeometry)
-        lineNode.name = "pulse_line_\(pulse.id.uuidString)"
-        
-        return lineNode
-    }
-    
     private func convertToSphereCoordinates(_ coordinate: CLLocationCoordinate2D) -> (x: Float, y: Float, z: Float) {
-        let earthRadius: Float = 1.0
-        
-        // Convert degrees to radians
+            let earthRadius: Float = 1.0
+            
+            // Convert degrees to radians
         let lat = Float(coordinate.latitude) * .pi / 180.0
         let lon = Float(coordinate.longitude) * .pi / 180.0
-        
+            
         // Spherical to Cartesian coordinate conversion
-        let x = earthRadius * cos(lat) * cos(lon)
-        let y = earthRadius * sin(lat)
+            let x = earthRadius * cos(lat) * cos(lon)
+            let y = earthRadius * sin(lat)
         let z = -earthRadius * cos(lat) * sin(lon)
-        
-        return (x, y, z)
+            
+            return (x, y, z)
     }
 }
 
@@ -683,20 +653,20 @@ struct StarDetailView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Star visualization
-            Circle()
-                .fill(Color(
-                    red: Double(star.color.rgba.red),
-                    green: Double(star.color.rgba.green),
-                    blue: Double(star.color.rgba.blue)
-                ))
-                .frame(width: 60, height: 60)
-                .shadow(color: .yellow, radius: 10)
-            
-            // Pulse details
-            VStack(alignment: .leading, spacing: 12) {
-                DetailRow(title: "Location", value: "\(star.location.latitude.formatted(.number.precision(.fractionLength(2)))), \(star.location.longitude.formatted(.number.precision(.fractionLength(2))))")
+                // Star visualization
+                Circle()
+                    .fill(Color(
+                        red: Double(star.color.rgba.red),
+                        green: Double(star.color.rgba.green),
+                        blue: Double(star.color.rgba.blue)
+                    ))
+                    .frame(width: 60, height: 60)
+                    .shadow(color: .yellow, radius: 10)
                 
+                // Pulse details
+                VStack(alignment: .leading, spacing: 12) {
+                    DetailRow(title: "Location", value: "\(star.location.latitude.formatted(.number.precision(.fractionLength(2)))), \(star.location.longitude.formatted(.number.precision(.fractionLength(2))))")
+                    
                 DetailRow(title: "Pulse Duration", value: formatDuration(star.pulseMatch?.pulseDuration ?? 0))
                 
                 DetailRow(title: "Photos Exchanged", value: "\(star.pulseMatch?.photoCount ?? 0)")
@@ -740,4 +710,4 @@ struct GlobeView_Previews: PreviewProvider {
         GlobeView()
             .preferredColorScheme(.dark)
     }
-}
+} 

@@ -17,6 +17,51 @@ class GlobeViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
+    // MARK: - Computed Properties
+    var hasActivePulse: Bool {
+        !activePulses.isEmpty
+    }
+    
+    var currentPulseLocation: String {
+        guard let firstPulse = activePulses.first else {
+            return "Unknown location"
+        }
+        
+        let lat = firstPulse.partnerLocation.latitude
+        let lon = firstPulse.partnerLocation.longitude
+        
+        // Format coordinates with approximate location
+        let latStr = String(format: "%.2f", lat)
+        let lonStr = String(format: "%.2f", lon)
+        
+        // Simple region detection based on coordinates
+        let region = getRegionName(for: firstPulse.partnerLocation)
+        
+        return "\(region) (\(latStr), \(lonStr))"
+    }
+    
+    private func getRegionName(for coordinate: CLLocationCoordinate2D) -> String {
+        let lat = coordinate.latitude
+        let lon = coordinate.longitude
+        
+        // Simple geographic region detection
+        if lat >= 25 && lat <= 49 && lon >= -125 && lon <= -66 {
+            return "United States"
+        } else if lat >= 35 && lat <= 71 && lon >= -10 && lon <= 40 {
+            return "Europe"
+        } else if lat >= 45 && lat <= 83 && lon >= -141 && lon <= -60 {
+            return "Canada"
+        } else if lat >= -55 && lat <= -10 && lon >= -82 && lon <= -35 {
+            return "South America"
+        } else if lat >= -37 && lat <= 38 && lon >= 113 && lon <= 154 {
+            return "Australia"
+        } else if lat >= 20 && lat <= 46 && lon >= 73 && lon <= 135 {
+            return "Asia"
+        } else {
+            return "Remote Location"
+        }
+    }
+    
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var realtimeSubscription: AnyCancellable?
