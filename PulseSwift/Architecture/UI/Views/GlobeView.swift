@@ -247,8 +247,8 @@ struct GlobeSceneView: UIViewRepresentable {
         earthNode.name = "earth"
         
         // Rotate the Earth to center on US/Europe (Y axis rotation adjustment)
-        // Increase Y rotation to show more North America and Europe
-        earthNode.eulerAngles = SCNVector3(0, Float.pi + 0.8, 0) // More Y rotation to better show North America/Europe
+        // Further increase Y rotation to prominently center North America and Europe
+        earthNode.eulerAngles = SCNVector3(0, Float.pi + 1.2, 0) // Even more Y rotation to center North America/Europe
         
         scene.rootNode.addChildNode(earthNode)
         
@@ -681,8 +681,8 @@ struct GlobeSceneView: UIViewRepresentable {
         }
         
         private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
-            // Create star geometry
-        let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.02))
+            // Create star geometry with larger, more visible size
+        let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.08)) // Increased from 0.02 to make stars visible
             let starMaterial = SCNMaterial()
             
             let color = star.color.rgba
@@ -698,9 +698,9 @@ struct GlobeSceneView: UIViewRepresentable {
             let starNode = SCNNode(geometry: starGeometry)
             starNode.name = star.id.uuidString
             
-            // Position on sphere surface
+            // Position slightly above sphere surface for visibility
             let coords = star.sphereCoordinates
-        starNode.position = SCNVector3(coords.x * 1.01, coords.y * 1.01, coords.z * 1.01)
+        starNode.position = SCNVector3(coords.x * 1.05, coords.y * 1.05, coords.z * 1.05) // More offset from surface
             
             // Add pulsing animation
             let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")

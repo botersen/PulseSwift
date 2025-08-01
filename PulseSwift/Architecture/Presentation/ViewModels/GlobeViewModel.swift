@@ -44,20 +44,86 @@ class GlobeViewModel: ObservableObject {
         let lat = coordinate.latitude
         let lon = coordinate.longitude
         
-        // Simple geographic region detection
-        if lat >= 25 && lat <= 49 && lon >= -125 && lon <= -66 {
-            return "United States"
+        // Detailed city detection with countries
+        // North America
+        if lat >= 40.5 && lat <= 41.0 && lon >= -74.5 && lon <= -73.5 {
+            return "New York City, USA"
+        } else if lat >= 34.0 && lat <= 34.5 && lon >= -118.5 && lon <= -118.0 {
+            return "Los Angeles, USA"
+        } else if lat >= 25.5 && lat <= 26.0 && lon >= -80.5 && lon <= -80.0 {
+            return "Miami, USA"
+        } else if lat >= 43.5 && lat <= 44.0 && lon >= -79.5 && lon <= -79.0 {
+            return "Toronto, Canada"
+        } else if lat >= 19.0 && lat <= 19.5 && lon >= -99.5 && lon <= -99.0 {
+            return "Mexico City, Mexico"
+        } else if lat >= 25 && lat <= 49 && lon >= -125 && lon <= -66 {
+            return "North America"
+        }
+        
+        // Europe
+        else if lat >= 51.0 && lat <= 51.5 && lon >= -0.5 && lon <= 0.5 {
+            return "London, UK"
+        } else if lat >= 48.5 && lat <= 49.0 && lon >= 2.0 && lon <= 2.5 {
+            return "Paris, France"
+        } else if lat >= 52.0 && lat <= 52.5 && lon >= 13.0 && lon <= 13.5 {
+            return "Berlin, Germany"
+        } else if lat >= 41.5 && lat <= 42.0 && lon >= 12.0 && lon <= 13.0 {
+            return "Rome, Italy"
+        } else if lat >= 40.0 && lat <= 40.5 && lon >= -3.5 && lon <= -3.0 {
+            return "Madrid, Spain"
+        } else if lat >= 52.0 && lat <= 52.5 && lon >= 4.5 && lon <= 5.0 {
+            return "Amsterdam, Netherlands"
+        } else if lat >= 59.0 && lat <= 59.5 && lon >= 18.0 && lon <= 18.5 {
+            return "Stockholm, Sweden"
+        } else if lat >= 38.5 && lat <= 39.0 && lon >= -9.5 && lon <= -9.0 {
+            return "Lisbon, Portugal"
         } else if lat >= 35 && lat <= 71 && lon >= -10 && lon <= 40 {
             return "Europe"
-        } else if lat >= 45 && lat <= 83 && lon >= -141 && lon <= -60 {
-            return "Canada"
-        } else if lat >= -55 && lat <= -10 && lon >= -82 && lon <= -35 {
-            return "South America"
-        } else if lat >= -37 && lat <= 38 && lon >= 113 && lon <= 154 {
-            return "Australia"
+        }
+        
+        // Asia
+        else if lat >= 35.5 && lat <= 36.0 && lon >= 139.5 && lon <= 140.0 {
+            return "Tokyo, Japan"
+        } else if lat >= 37.5 && lat <= 38.0 && lon >= 126.5 && lon <= 127.0 {
+            return "Seoul, South Korea"
+        } else if lat >= 1.0 && lat <= 1.5 && lon >= 103.5 && lon <= 104.0 {
+            return "Singapore"
+        } else if lat >= 22.0 && lat <= 22.5 && lon >= 114.0 && lon <= 114.5 {
+            return "Hong Kong"
+        } else if lat >= 18.5 && lat <= 19.5 && lon >= 72.5 && lon <= 73.0 {
+            return "Mumbai, India"
+        } else if lat >= 25.0 && lat <= 25.5 && lon >= 55.0 && lon <= 55.5 {
+            return "Dubai, UAE"
         } else if lat >= 20 && lat <= 46 && lon >= 73 && lon <= 135 {
             return "Asia"
-        } else {
+        }
+        
+        // South America
+        else if lat >= -23.5 && lat <= -23.0 && lon >= -46.5 && lon <= -46.0 {
+            return "São Paulo, Brazil"
+        } else if lat >= -34.5 && lat <= -34.0 && lon >= -58.5 && lon <= -58.0 {
+            return "Buenos Aires, Argentina"
+        } else if lat >= -55 && lat <= -10 && lon >= -82 && lon <= -35 {
+            return "South America"
+        }
+        
+        // Oceania
+        else if lat >= -34.0 && lat <= -33.5 && lon >= 151.0 && lon <= 151.5 {
+            return "Sydney, Australia"
+        } else if lat >= -37.5 && lat <= -37.0 && lon >= 144.5 && lon <= 145.0 {
+            return "Melbourne, Australia"
+        } else if lat >= -37 && lat <= 38 && lon >= 113 && lon <= 154 {
+            return "Australia"
+        }
+        
+        // Africa
+        else if lat >= 30.0 && lat <= 30.5 && lon >= 31.0 && lon <= 31.5 {
+            return "Cairo, Egypt"
+        } else if lat >= 6.0 && lat <= 6.5 && lon >= 3.0 && lon <= 3.5 {
+            return "Lagos, Nigeria"
+        }
+        
+        else {
             return "Remote Location"
         }
     }
