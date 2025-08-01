@@ -104,6 +104,9 @@ struct GlobeSceneView: UIViewRepresentable {
     @Binding var selectedStar: GlobeStarEntity?
     @Binding var showStarDetails: Bool
     
+    // MARK: - Brutalist Texture Cache
+    private static var cachedSilverTexture: UIImage?
+    
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
         sceneView.scene = createGlobeScene()
@@ -144,15 +147,19 @@ struct GlobeSceneView: UIViewRepresentable {
         let earthGeometry = SCNSphere(radius: 1.0)
         let earthMaterial = SCNMaterial()
         
-        // Use high-quality user-provided Earth textures
-        earthMaterial.diffuse.contents = UIImage(named: "earth_diffuse_map") ?? createSimpleGreyEarthTexture()
-        earthMaterial.normal.contents = UIImage(named: "earth_normal_map") // Optional normal map for surface detail
-        print("✅ GlobeView: Using high-quality custom Earth textures")
+        // Brutalist minimalist approach: bright silver countries, pure black oceans
+        earthMaterial.diffuse.contents = getBrightSilverTexture()
+        // No normal map - keep it clean and minimal
+        // No emission - pure brutalist simplicity
         
-        // Enhanced material properties for accurate geographical rendering
-        earthMaterial.specular.contents = UIColor.clear // No reflections for clean minimal look
-        earthMaterial.shininess = 0.0 // Completely matte for sharp contrast  
-        earthMaterial.lightingModel = .lambert // Clean, even lighting for geographic accuracy
+        print("✅ GlobeView: Using brutalist minimalist bright silver Earth with pure black oceans")
+        
+        // Bright metallic material properties for dramatic silver look
+        earthMaterial.specular.contents = UIColor(white: 0.8, alpha: 1.0) // Much brighter reflections
+        earthMaterial.shininess = 0.6 // Higher shine for bright metallic look
+        earthMaterial.lightingModel = .blinn // Better for metallic surfaces
+        earthMaterial.metalness.contents = 0.4 // More metallic
+        earthMaterial.roughness.contents = 0.3 // Smoother surface
         
         // Ensure proper UV mapping for geographic accuracy
         earthMaterial.diffuse.wrapS = .repeat
@@ -169,8 +176,8 @@ struct GlobeSceneView: UIViewRepresentable {
         
         scene.rootNode.addChildNode(earthNode)
         
-        // Setup enhanced lighting for YC demo
-        setupEnhancedLighting(scene: scene)
+        // Setup bright lighting for metallic silver countries
+        setupBrightMetallicLighting(scene: scene)
         
         // Setup camera
         let camera = SCNCamera()
@@ -198,47 +205,223 @@ struct GlobeSceneView: UIViewRepresentable {
         print("🌍 GlobeView: Auto-rotation enabled (right to left, 30s per revolution)")
     }
     
-    // MARK: - Enhanced Lighting
-    private func setupEnhancedLighting(scene: SCNScene) {
-        // Key light (main directional light from upper right)
-        let keyLight = SCNLight()
-        keyLight.type = .directional
-        keyLight.intensity = 600 // Reduced from 1200 to avoid washing out
-        keyLight.color = UIColor(white: 1.0, alpha: 1.0)
-        keyLight.castsShadow = true
-        keyLight.shadowRadius = 5.0
+    // MARK: - Bright Metallic Lighting
+    private func setupBrightMetallicLighting(scene: SCNScene) {
+        // Bright ambient light to make silver countries shine
+        let ambientLight = SCNLight()
+        ambientLight.type = .ambient
+        ambientLight.intensity = 600 // Higher for bright metallic look
+        ambientLight.color = UIColor(white: 1.0, alpha: 1.0)
         
-        let keyLightNode = SCNNode()
-        keyLightNode.light = keyLight
-        keyLightNode.position = SCNVector3(x: 2, y: 3, z: 2)
-        keyLightNode.look(at: SCNVector3(0, 0, 0))
-        scene.rootNode.addChildNode(keyLightNode)
+        let ambientNode = SCNNode()
+        ambientNode.light = ambientLight
+        scene.rootNode.addChildNode(ambientNode)
         
-        // Fill light (softer ambient to prevent harsh shadows)
-        let fillLight = SCNLight()
-        fillLight.type = .ambient
-        fillLight.intensity = 200 // Reduced from 400
-        fillLight.color = UIColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 1.0) // Slightly cool
+        // Add directional light for metallic reflections
+        let directionalLight = SCNLight()
+        directionalLight.type = .directional
+        directionalLight.intensity = 400
+        directionalLight.color = UIColor(white: 1.0, alpha: 1.0)
         
-        let fillLightNode = SCNNode()
-        fillLightNode.light = fillLight
-        scene.rootNode.addChildNode(fillLightNode)
+        let directionalNode = SCNNode()
+        directionalNode.light = directionalLight
+        directionalNode.position = SCNVector3(x: 2, y: 2, z: 2)
+        directionalNode.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(directionalNode)
         
-        // Rim light (subtle backlight for depth)
-        let rimLight = SCNLight()
-        rimLight.type = .spot
-        rimLight.intensity = 300 // Reduced from 600
-        rimLight.color = UIColor(red: 1.0, green: 0.9, blue: 0.8, alpha: 1.0) // Warm edge light
-        rimLight.spotInnerAngle = 45
-        rimLight.spotOuterAngle = 60
+        print("💡 GlobeView: Bright metallic lighting setup complete")
+    }
+    
+    // MARK: - Elevation Glow Effect
+    private func createElevationGlowMap() -> UIImage {
+        // Load both maps to combine them properly
+        guard let normalImage = UIImage(named: "earth_normal_map"),
+              let diffuseImage = UIImage(named: "earth_diffuse_map") else {
+            print("⚠️ GlobeView: Could not load maps for elevation glow")
+            return UIImage() // Return empty image
+        }
         
-        let rimLightNode = SCNNode()
-        rimLightNode.light = rimLight
-        rimLightNode.position = SCNVector3(x: -2, y: 1, z: -2)
-        rimLightNode.look(at: SCNVector3(0, 0, 0))
-        scene.rootNode.addChildNode(rimLightNode)
+        guard let normalCGImage = normalImage.cgImage,
+              let diffuseCGImage = diffuseImage.cgImage else {
+            return UIImage()
+        }
         
-        print("💡 GlobeView: Enhanced lighting setup complete")
+        let width = normalCGImage.width
+        let height = normalCGImage.height
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bytesPerPixel = 4
+        let bytesPerRow = bytesPerPixel * width
+        let bitsPerComponent = 8
+        
+        // Create pixel data arrays for both images
+        var normalPixelData = [UInt8](repeating: 0, count: height * width * 4)
+        var diffusePixelData = [UInt8](repeating: 0, count: height * width * 4)
+        var outputPixelData = [UInt8](repeating: 0, count: height * width * 4)
+        
+        let normalContext = CGContext(
+            data: &normalPixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )
+        
+        let diffuseContext = CGContext(
+            data: &diffusePixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )
+        
+        let outputContext = CGContext(
+            data: &outputPixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )
+        
+        normalContext?.draw(normalCGImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        diffuseContext?.draw(diffuseCGImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        // Process pixels to create white glow only on high elevations OF LAND
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = ((width * y) + x) * 4
+                
+                // Get diffuse pixel (to check if land or ocean)
+                let diffuseRed = diffusePixelData[pixelIndex]
+                let diffuseGreen = diffusePixelData[pixelIndex + 1]
+                let diffuseBlue = diffusePixelData[pixelIndex + 2]
+                let diffuseBrightness = (Int(diffuseRed) + Int(diffuseGreen) + Int(diffuseBlue)) / 3
+                
+                // Get normal pixel (elevation data)
+                let normalRed = normalPixelData[pixelIndex]
+                let normalGreen = normalPixelData[pixelIndex + 1]
+                let normalBlue = normalPixelData[pixelIndex + 2]
+                let normalBrightness = (Int(normalRed) + Int(normalGreen) + Int(normalBlue)) / 3
+                
+                // Only apply glow to LAND areas (grey in diffuse) with HIGH elevation
+                if diffuseBrightness > 50 && normalBrightness > 160 { // Land + high elevation
+                    // Create white glow point
+                    let glowIntensity = UInt8(min(255, (normalBrightness - 160) * 2))
+                    outputPixelData[pixelIndex] = glowIntensity     // Red
+                    outputPixelData[pixelIndex + 1] = glowIntensity // Green
+                    outputPixelData[pixelIndex + 2] = glowIntensity // Blue
+                    outputPixelData[pixelIndex + 3] = 255          // Alpha
+                } else {
+                    // No glow - keep oceans and low elevations black
+                    outputPixelData[pixelIndex] = 0     // Red
+                    outputPixelData[pixelIndex + 1] = 0 // Green
+                    outputPixelData[pixelIndex + 2] = 0 // Blue
+                    outputPixelData[pixelIndex + 3] = 255 // Alpha
+                }
+            }
+        }
+        
+        // Create new image from processed pixels
+        if let outputCGImage = outputContext?.makeImage() {
+            return UIImage(cgImage: outputCGImage)
+        }
+        
+        return UIImage()
+    }
+    
+
+    
+    private func getBrightSilverTexture() -> UIImage {
+        // Return cached version if available
+        if let cached = Self.cachedSilverTexture {
+            return cached
+        }
+        
+        // Create bright silver texture with pure black oceans
+        let brightTexture = createBrightSilverTexture()
+        Self.cachedSilverTexture = brightTexture
+        
+        return brightTexture
+    }
+    
+    // Removed emission texture function - keeping it brutalist minimal
+    
+    // MARK: - Brutalist Silver Texture Processing
+    private func createBrightSilverTexture() -> UIImage {
+        guard let baseImage = UIImage(named: "earth_diffuse_map") else {
+            print("⚠️ GlobeView: Could not load earth diffuse map, using fallback")
+            return createSimpleGreyEarthTexture()
+        }
+        
+        // Core Image processing for bright silver countries with pure black oceans
+        guard let ciImage = CIImage(image: baseImage) else {
+            return baseImage
+        }
+        
+        // Create brightness/contrast filter for much brighter metallic look
+        let brightnessFilter = CIFilter(name: "CIColorControls")
+        brightnessFilter?.setValue(ciImage, forKey: kCIInputImageKey)
+        brightnessFilter?.setValue(0.8, forKey: kCIInputBrightnessKey)  // Much brighter (+80%)
+        brightnessFilter?.setValue(1.4, forKey: kCIInputContrastKey)    // Higher contrast for black oceans
+        
+        guard let brightImage = brightnessFilter?.outputImage else {
+            return baseImage
+        }
+        
+        // Apply threshold to ensure pure black oceans
+        let thresholdFilter = CIFilter(name: "CIColorThreshold")
+        thresholdFilter?.setValue(brightImage, forKey: kCIInputImageKey)
+        thresholdFilter?.setValue(0.15, forKey: "inputThreshold") // Anything below 15% becomes pure black
+        
+        guard let finalImage = thresholdFilter?.outputImage else {
+            return baseImage
+        }
+        
+        let context = CIContext()
+        if let cgImage = context.createCGImage(finalImage, from: finalImage.extent) {
+            return UIImage(cgImage: cgImage)
+        }
+        
+        return baseImage
+    }
+    
+    private func createOptimizedEmissionTexture() -> UIImage {
+        // Create a simple white emission map for mountain peaks (much lighter processing)
+        // Use lower resolution for performance
+        let size = CGSize(width: 512, height: 256) // Much smaller than original
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            
+            // Fill with black (no emission by default)
+            context.cgContext.setFillColor(UIColor.black.cgColor)
+            context.cgContext.fill(rect)
+            
+            // Add just a few bright white spots for major mountain ranges (hardcoded for performance)
+            context.cgContext.setFillColor(UIColor.white.cgColor)
+            
+            // Himalayas
+            let himalayas = CGRect(x: size.width * 0.65, y: size.height * 0.35, width: 8, height: 4)
+            context.cgContext.fillEllipse(in: himalayas)
+            
+            // Rocky Mountains
+            let rockies = CGRect(x: size.width * 0.15, y: size.height * 0.3, width: 3, height: 12)
+            context.cgContext.fillEllipse(in: rockies)
+            
+            // Andes
+            let andes = CGRect(x: size.width * 0.25, y: size.height * 0.6, width: 2, height: 20)
+            context.cgContext.fillEllipse(in: andes)
+            
+            // Alps
+            let alps = CGRect(x: size.width * 0.52, y: size.height * 0.28, width: 3, height: 2)
+            context.cgContext.fillEllipse(in: alps)
+        }
     }
     
     // MARK: - Accurate Earth Texture Creation (Grey Countries, Black Oceans)
