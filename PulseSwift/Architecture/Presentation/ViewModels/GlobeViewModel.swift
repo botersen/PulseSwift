@@ -415,42 +415,132 @@ extension GlobeViewModel {
     }
     
     private func addPastPulseMatches() {
-        // Simulate past pulse matches (dimmer, smaller)
-        let pastLocations = [
+        // YC DEMO: 50 diverse pulse matches across all major countries and continents
+        let demoLocations = [
+            // North America (12 locations)
             ("New York City", CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)),
-            ("São Paulo", CLLocationCoordinate2D(latitude: -23.5505, longitude: -46.6333)),
-            ("Cairo", CLLocationCoordinate2D(latitude: 30.0444, longitude: 31.2357)),
+            ("Los Angeles", CLLocationCoordinate2D(latitude: 34.0522, longitude: -118.2437)),
+            ("Chicago", CLLocationCoordinate2D(latitude: 41.8781, longitude: -87.6298)),
+            ("Miami", CLLocationCoordinate2D(latitude: 25.7617, longitude: -80.1918)),
+            ("Toronto", CLLocationCoordinate2D(latitude: 43.6532, longitude: -79.3832)),
+            ("Vancouver", CLLocationCoordinate2D(latitude: 49.2827, longitude: -123.1207)),
+            ("Mexico City", CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)),
+            ("Austin", CLLocationCoordinate2D(latitude: 30.2672, longitude: -97.7431)),
+            ("Seattle", CLLocationCoordinate2D(latitude: 47.6062, longitude: -122.3321)),
+            ("Boston", CLLocationCoordinate2D(latitude: 42.3601, longitude: -71.0589)),
+            ("Montreal", CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673)),
+            ("Denver", CLLocationCoordinate2D(latitude: 39.7392, longitude: -104.9903)),
+            
+            // Europe (12 locations)
+            ("London", CLLocationCoordinate2D(latitude: 51.5074, longitude: -0.1278)),
+            ("Paris", CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)),
+            ("Berlin", CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050)),
+            ("Rome", CLLocationCoordinate2D(latitude: 41.9028, longitude: 12.4964)),
+            ("Madrid", CLLocationCoordinate2D(latitude: 40.4168, longitude: -3.7038)),
+            ("Amsterdam", CLLocationCoordinate2D(latitude: 52.3676, longitude: 4.9041)),
+            ("Stockholm", CLLocationCoordinate2D(latitude: 59.3293, longitude: 18.0686)),
+            ("Vienna", CLLocationCoordinate2D(latitude: 48.2082, longitude: 16.3738)),
+            ("Barcelona", CLLocationCoordinate2D(latitude: 41.3851, longitude: 2.1734)),
+            ("Copenhagen", CLLocationCoordinate2D(latitude: 55.6761, longitude: 12.5683)),
+            ("Dublin", CLLocationCoordinate2D(latitude: 53.3498, longitude: -6.2603)),
+            ("Prague", CLLocationCoordinate2D(latitude: 50.0755, longitude: 14.4378)),
+            
+            // Asia (15 locations)
+            ("Tokyo", CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)),
+            ("Seoul", CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.9780)),
+            ("Singapore", CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198)),
+            ("Hong Kong", CLLocationCoordinate2D(latitude: 22.3193, longitude: 114.1694)),
             ("Mumbai", CLLocationCoordinate2D(latitude: 19.0760, longitude: 72.8777)),
-            ("Berlin", CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050))
+            ("Bangkok", CLLocationCoordinate2D(latitude: 13.7563, longitude: 100.5018)),
+            ("Beijing", CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)),
+            ("Shanghai", CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)),
+            ("Delhi", CLLocationCoordinate2D(latitude: 28.7041, longitude: 77.1025)),
+            ("Bangalore", CLLocationCoordinate2D(latitude: 12.9716, longitude: 77.5946)),
+            ("Jakarta", CLLocationCoordinate2D(latitude: -6.2088, longitude: 106.8456)),
+            ("Kuala Lumpur", CLLocationCoordinate2D(latitude: 3.1390, longitude: 101.6869)),
+            ("Manila", CLLocationCoordinate2D(latitude: 14.5995, longitude: 120.9842)),
+            ("Tel Aviv", CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818)),
+            ("Dubai", CLLocationCoordinate2D(latitude: 25.2048, longitude: 55.2708)),
+            
+            // South America (4 locations)
+            ("São Paulo", CLLocationCoordinate2D(latitude: -23.5505, longitude: -46.6333)),
+            ("Buenos Aires", CLLocationCoordinate2D(latitude: -34.6037, longitude: -58.3816)),
+            ("Rio de Janeiro", CLLocationCoordinate2D(latitude: -22.9068, longitude: -43.1729)),
+            ("Lima", CLLocationCoordinate2D(latitude: -12.0464, longitude: -77.0428)),
+            
+            // Africa (4 locations)
+            ("Cairo", CLLocationCoordinate2D(latitude: 30.0444, longitude: 31.2357)),
+            ("Lagos", CLLocationCoordinate2D(latitude: 6.5244, longitude: 3.3792)),
+            ("Cape Town", CLLocationCoordinate2D(latitude: -33.9249, longitude: 18.4241)),
+            ("Nairobi", CLLocationCoordinate2D(latitude: -1.2921, longitude: 36.8219)),
+            
+            // Oceania (3 locations)
+            ("Sydney", CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)),
+            ("Melbourne", CLLocationCoordinate2D(latitude: -37.8136, longitude: 144.9631)),
+            ("Auckland", CLLocationCoordinate2D(latitude: -36.8485, longitude: 174.7633))
         ]
         
-        let pastStars = pastLocations.enumerated().map { index, location in
+        let demoStars = demoLocations.enumerated().map { index, location in
+            // Create variety in match types for realistic demo
+            let daysSinceMatch = Double(index % 30 + 1) // 1-30 days ago
+            let matchQuality = index % 4 // 0-3 quality levels
+            let conversationLength = [20, 45, 90, 180][matchQuality] // Different conversation lengths
+            let photoCount = [1, 2, 3, 5][matchQuality] // More photos = better matches
+            
             let mockMatch = PulseMatchEntity(
                 id: UUID(),
                 userId: UUID(),
                 partnerId: UUID(),
                 userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // User in SF
                 partnerLocation: location.1,
-                pulseDuration: Double(60 + index * 30), // Longer past conversations
-                photoCount: index + 1,
-                sessionStartedAt: Date().addingTimeInterval(-Double(index * 3600 * 24)), // Days ago
-                sessionEndedAt: Date().addingTimeInterval(-Double(index * 3600 * 24 - 300)), // Completed
-                createdAt: Date().addingTimeInterval(-Double(index * 86400))
+                pulseDuration: Double(conversationLength + Int.random(in: -10...20)), // Add randomness
+                photoCount: photoCount,
+                sessionStartedAt: Date().addingTimeInterval(-daysSinceMatch * 86400),
+                sessionEndedAt: Date().addingTimeInterval(-daysSinceMatch * 86400 + Double(conversationLength)),
+                createdAt: Date().addingTimeInterval(-daysSinceMatch * 86400)
             )
+            
+            // Vary star appearance based on match quality and recency
+            let size: Float = {
+                switch matchQuality {
+                case 0: return Float.random(in: 0.5...0.7) // Small - brief matches
+                case 1: return Float.random(in: 0.7...0.9) // Medium - good matches
+                case 2: return Float.random(in: 0.9...1.2) // Large - great matches
+                case 3: return Float.random(in: 1.2...1.5) // Extra large - amazing matches
+                default: return 0.8
+                }
+            }()
+            
+            let color: StarColor = {
+                switch matchQuality {
+                case 0: return .gray         // Brief encounters
+                case 1: return .yellow       // Standard matches
+                case 2: return .gold         // Good matches
+                case 3: return .brightYellow // Exceptional matches
+                default: return .yellow
+                }
+            }()
+            
+            let glowIntensity: Float = {
+                let baseGlow = Float(matchQuality) * 0.2 + 0.2 // 0.2-0.8 based on quality
+                let recencyBoost: Float = daysSinceMatch < 7 ? 0.3 : 0.0 // Recent matches glow more
+                return min(1.0, baseGlow + recencyBoost)
+            }()
             
             return GlobeStarEntity(
                 id: UUID(),
                 location: location.1,
-                size: Float(0.6 + Double(index) * 0.1), // Smaller for past matches
-                color: .gray, // Dimmed color for past matches
-                glowIntensity: Float(0.3 + Double(index) * 0.1), // Low glow
+                size: size,
+                color: color,
+                glowIntensity: glowIntensity,
                 pulseMatch: mockMatch
             )
         }
         
         DispatchQueue.main.async {
-            self.stars.append(contentsOf: pastStars)
-            print("📍 Added \(pastStars.count) past pulse matches")
+            self.stars.append(contentsOf: demoStars)
+            print("🌟 YC DEMO: Added \(demoStars.count) pulse matches across all continents!")
+            print("   📊 Quality distribution: Brief(\(demoStars.filter { $0.color == .gray }.count)), Standard(\(demoStars.filter { $0.color == .yellow }.count)), Good(\(demoStars.filter { $0.color == .gold }.count)), Amazing(\(demoStars.filter { $0.color == .brightYellow }.count))")
         }
     }
     
