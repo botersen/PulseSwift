@@ -671,6 +671,12 @@ extension GlobeViewModel {
             print("🌟 YC DEMO: Added \(demoStars.count) pulse matches across all continents!")
             print("   📊 Quality distribution: Brief(\(demoStars.filter { $0.color == .gray }.count)), Standard(\(demoStars.filter { $0.color == .yellow }.count)), Good(\(demoStars.filter { $0.color == .gold }.count)), Amazing(\(demoStars.filter { $0.color == .brightYellow }.count))")
             print("   ⭐ Star sizes range from \(demoStars.map { $0.size }.min() ?? 0) to \(demoStars.map { $0.size }.max() ?? 0) based on conversation duration")
+            print("   📍 Total stars in ViewModel: \(self.stars.count)")
+            
+            // Log first 3 stars for debugging
+            for (index, star) in demoStars.prefix(3).enumerated() {
+                print("   🔍 Star \(index): \(star.location) size=\(star.size) color=\(star.color)")
+            }
         }
     }
     

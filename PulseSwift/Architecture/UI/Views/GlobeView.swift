@@ -700,7 +700,12 @@ struct GlobeSceneView: UIViewRepresentable {
         }
         
         @MainActor func updateStars(_ stars: [GlobeStarEntity]) {
-            guard let scene = parent.viewModel.sceneView?.scene else { return }
+            guard let scene = sceneView?.scene else { 
+                print("❌ updateStars: No scene available")
+                return 
+            }
+            
+            print("🌟 updateStars called with \(stars.count) stars")
             
         // Remove old star nodes
             let currentStarIds = Set(stars.map { $0.id })
@@ -717,12 +722,17 @@ struct GlobeSceneView: UIViewRepresentable {
                     let starNode = createStarNode(for: star)
                     starNodes[star.id] = starNode
                     scene.rootNode.addChildNode(starNode)
+                    print("✅ Added star node to scene: \(star.id)")
+                } else {
+                    print("⚪ Star already exists: \(star.id)")
                 }
             }
+            
+            print("📊 Total star nodes in coordinator: \(starNodes.count)")
         }
         
         @MainActor func updateActivePulses(_ pulses: [ActivePulseConnectionEntity]) {
-            guard let scene = parent.viewModel.sceneView?.scene else { return }
+            guard let scene = sceneView?.scene else { return }
             
             // Remove old pulse lines
             let currentPulseIds = Set(pulses.map { $0.id })
@@ -745,7 +755,8 @@ struct GlobeSceneView: UIViewRepresentable {
         
         private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
             // Create star geometry with much larger, bright, glowing size
-        let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.15)) // Even larger for visibility
+            let finalRadius = CGFloat(max(0.05, star.size * 0.15)) // Minimum 0.05 for visibility  
+            let starGeometry = SCNSphere(radius: finalRadius)
             let starMaterial = SCNMaterial()
             
             let color = star.color.rgba
@@ -770,9 +781,12 @@ struct GlobeSceneView: UIViewRepresentable {
             
             // Position slightly above sphere surface for visibility
             let coords = star.sphereCoordinates
-        starNode.position = SCNVector3(coords.x * 1.1, coords.y * 1.1, coords.z * 1.1) // Even more offset for visibility
+        starNode.position = SCNVector3(coords.x * 1.15, coords.y * 1.15, coords.z * 1.15) // Much more offset for visibility
             
-            print("⭐ Creating bright star at: (\(coords.x), \(coords.y), \(coords.z)) color: \(star.color) size: \(star.size)")
+            print("⭐ Creating bright star at: (\(coords.x), \(coords.y), \(coords.z))")
+            print("   📏 Star size: \(star.size) -> final radius: \(finalRadius)")
+            print("   🎨 Color: \(star.color)")
+            print("   📍 Position: (\(coords.x * 1.15), \(coords.y * 1.15), \(coords.z * 1.15))")
             
             // Add pulsing animation
             let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
