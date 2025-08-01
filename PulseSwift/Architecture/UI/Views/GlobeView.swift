@@ -35,21 +35,18 @@ struct GlobeView: View {
                     // Live Pulse Location Display (Bottom Center)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("LIVE PULSE LOCATION")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white.opacity(0.8))
+                            .font(.custom("DMMono-Regular", size: 16)) // +5pts from 11pt caption
+                            .foregroundColor(.gray.opacity(0.8))
                             .tracking(1)
                         
                         if globeViewModel.hasActivePulse {
                             Text(globeViewModel.currentPulseLocation)
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.yellow)
+                                .font(.custom("DMMono-Regular", size: 22)) // +5pts from 17pt headline
+                                .foregroundColor(.gray.opacity(0.8))
                         } else {
                             Text("No pulses active - tap left to send a pulse")
-                                .font(.headline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(.custom("DMMono-Regular", size: 22)) // +5pts from 17pt headline
+                                .foregroundColor(.gray.opacity(0.8))
                         }
                     }
                     .padding()
@@ -140,15 +137,12 @@ struct InternationalTimesView: View {
             ForEach(Array(randomCities.enumerated()), id: \.offset) { index, city in
                 HStack(spacing: 6) {
                     Text("\(city.0):")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white.opacity(0.9))
+                        .font(.custom("DMMono-Regular", size: 16)) // +5pts from 11pt caption
+                        .foregroundColor(.gray.opacity(0.8))
                     
                     Text(timeString(for: city.1))
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.yellow)
-                        .monospacedDigit()
+                        .font(.custom("DMMono-Regular", size: 16)) // +5pts from 11pt caption
+                        .foregroundColor(.gray.opacity(0.8))
                 }
             }
         }
@@ -253,8 +247,8 @@ struct GlobeSceneView: UIViewRepresentable {
         earthNode.name = "earth"
         
         // Rotate the Earth to center on US/Europe (Y axis rotation adjustment)
-        // Adjust Y rotation to bring US/Europe towards center view
-        earthNode.eulerAngles = SCNVector3(0, Float.pi + 0.4, 0) // Y axis adjustment to center on US/Europe
+        // Increase Y rotation to show more North America and Europe
+        earthNode.eulerAngles = SCNVector3(0, Float.pi + 0.8, 0) // More Y rotation to better show North America/Europe
         
         scene.rootNode.addChildNode(earthNode)
         
