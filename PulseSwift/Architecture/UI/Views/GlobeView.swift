@@ -151,11 +151,11 @@ struct GlobeSceneView: UIViewRepresentable {
         
         print("✅ GlobeView: Using original Earth diffuse map with reflective surface")
         
-        // Reflective but not metallic properties
-        earthMaterial.specular.contents = UIColor(white: 0.3, alpha: 1.0) // Subtle reflections
-        earthMaterial.shininess = 0.4 // Moderate shine for reflectivity
-        earthMaterial.lightingModel = .blinn // Good for reflective surfaces
-        // No metalness - keep it non-metallic
+        // Game-like material properties - subtle and even
+        earthMaterial.specular.contents = UIColor(white: 0.15, alpha: 1.0) // Very subtle reflections
+        earthMaterial.shininess = 0.2 // Low shine for even appearance
+        earthMaterial.lightingModel = .lambert // Simpler lighting for game-like feel
+        // No metalness - keep it clean and game-like
         
         // Ensure proper UV mapping for geographic accuracy
         earthMaterial.diffuse.wrapS = .repeat
@@ -172,8 +172,8 @@ struct GlobeSceneView: UIViewRepresentable {
         
         scene.rootNode.addChildNode(earthNode)
         
-        // Setup point lighting for reflective surface
-        setupPointLighting(scene: scene)
+        // Setup game-like even lighting for mobile visibility
+        setupGameLighting(scene: scene)
         
         // Setup camera
         let camera = SCNCamera()
@@ -201,32 +201,32 @@ struct GlobeSceneView: UIViewRepresentable {
         print("🌍 GlobeView: Auto-rotation enabled (right to left, 30s per revolution)")
     }
     
-    // MARK: - Point Light Setup
-    private func setupPointLighting(scene: SCNScene) {
-        // Moderate ambient light for base visibility
+    // MARK: - Game-Like Even Lighting
+    private func setupGameLighting(scene: SCNScene) {
+        // Higher ambient light for mobile game visibility
         let ambientLight = SCNLight()
         ambientLight.type = .ambient
-        ambientLight.intensity = 200 // Lower ambient for more dramatic point lighting
-        ambientLight.color = UIColor(white: 0.8, alpha: 1.0)
+        ambientLight.intensity = 400 // Much higher for even visibility
+        ambientLight.color = UIColor(white: 0.9, alpha: 1.0)
         
         let ambientNode = SCNNode()
         ambientNode.light = ambientLight
         scene.rootNode.addChildNode(ambientNode)
         
-        // Point light for reflective highlights
-        let pointLight = SCNLight()
-        pointLight.type = .omni // Point light
-        pointLight.intensity = 800 // Strong point light
-        pointLight.color = UIColor(white: 1.0, alpha: 1.0)
-        pointLight.attenuationStartDistance = 5.0
-        pointLight.attenuationEndDistance = 10.0
+        // Softer directional light instead of harsh point light
+        let directionalLight = SCNLight()
+        directionalLight.type = .directional
+        directionalLight.intensity = 300 // Gentler intensity
+        directionalLight.color = UIColor(white: 1.0, alpha: 1.0)
+        directionalLight.castsShadow = false // No harsh shadows for game-like feel
         
-        let pointLightNode = SCNNode()
-        pointLightNode.light = pointLight
-        pointLightNode.position = SCNVector3(x: 3, y: 2, z: 3) // Position the point light
-        scene.rootNode.addChildNode(pointLightNode)
+        let directionalNode = SCNNode()
+        directionalNode.light = directionalLight
+        directionalNode.position = SCNVector3(x: 1, y: 1, z: 1) // Softer angle
+        directionalNode.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(directionalNode)
         
-        print("💡 GlobeView: Point lighting setup complete")
+        print("💡 GlobeView: Game-like even lighting setup complete")
     }
     
     // MARK: - Elevation Glow Effect
