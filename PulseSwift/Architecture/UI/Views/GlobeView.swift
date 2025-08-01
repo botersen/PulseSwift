@@ -21,50 +21,59 @@ struct GlobeView: View {
             
             // UI Overlays
             VStack {
-                // Top Navigation
+                // Top International Times
                 HStack {
-                    // Back to Camera Button
-                    Button(action: {
-                        appFlowViewModel.navigateToCamera()
-                    }) {
-                        Image(systemName: "arrow.left")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(12)
-                            .background(Color.black.opacity(0.4))
-                            .clipShape(Circle())
-                    }
-                    
+                    InternationalTimesView()
                     Spacer()
                 }
                 .padding()
                 
                 Spacer()
                 
-                // Live Pulse Location Display
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("LIVE PULSE LOCATION")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white.opacity(0.8))
-                        .tracking(1)
+                // Bottom UI
+                VStack {
+                    // Live Pulse Location Display (Bottom Center)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("LIVE PULSE LOCATION")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white.opacity(0.8))
+                            .tracking(1)
+                        
+                        if globeViewModel.hasActivePulse {
+                            Text(globeViewModel.currentPulseLocation)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.yellow)
+                        } else {
+                            Text("No pulses active - tap left to send a pulse")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .padding()
+                    .background(Color.black.opacity(0.4))
+                    .cornerRadius(12)
                     
-                    if globeViewModel.hasActivePulse {
-                        Text(globeViewModel.currentPulseLocation)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.yellow)
-                    } else {
-                        Text("No pulses active - tap left to send a pulse")
-                            .font(.headline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.white.opacity(0.7))
+                    // Bottom Row with Back Button
+                    HStack {
+                        // Back to Camera Button (Bottom Left)
+                        Button(action: {
+                            appFlowViewModel.navigateToCamera()
+                        }) {
+                            Image(systemName: "arrow.left")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.black.opacity(0.4))
+                                .clipShape(Circle())
+                        }
+                        
+                        Spacer()
                     }
                 }
-                .padding()
-                .background(Color.black.opacity(0.4))
-                .cornerRadius(12)
                 .padding()
             }
         }
@@ -85,6 +94,93 @@ struct GlobeView: View {
         .onDisappear {
             globeViewModel.stopRealtimeUpdates()
         }
+    }
+}
+
+// MARK: - International Times View
+struct InternationalTimesView: View {
+    @State private var randomCities: [(String, TimeZone)] = []
+    @State private var currentTime = Date()
+    
+    private let globalCities = [
+        ("NYC", TimeZone(identifier: "America/New_York")!),
+        ("LA", TimeZone(identifier: "America/Los_Angeles")!),
+        ("London", TimeZone(identifier: "Europe/London")!),
+        ("Paris", TimeZone(identifier: "Europe/Paris")!),
+        ("Berlin", TimeZone(identifier: "Europe/Berlin")!),
+        ("Tokyo", TimeZone(identifier: "Asia/Tokyo")!),
+        ("Seoul", TimeZone(identifier: "Asia/Seoul")!),
+        ("Sydney", TimeZone(identifier: "Australia/Sydney")!),
+        ("Dubai", TimeZone(identifier: "Asia/Dubai")!),
+        ("Singapore", TimeZone(identifier: "Asia/Singapore")!),
+        ("Mumbai", TimeZone(identifier: "Asia/Kolkata")!),
+        ("Bangkok", TimeZone(identifier: "Asia/Bangkok")!),
+        ("Hong Kong", TimeZone(identifier: "Asia/Hong_Kong")!),
+        ("São Paulo", TimeZone(identifier: "America/Sao_Paulo")!),
+        ("Mexico City", TimeZone(identifier: "America/Mexico_City")!),
+        ("Toronto", TimeZone(identifier: "America/Toronto")!),
+        ("Vancouver", TimeZone(identifier: "America/Vancouver")!),
+        ("Cairo", TimeZone(identifier: "Africa/Cairo")!),
+        ("Lagos", TimeZone(identifier: "Africa/Lagos")!),
+        ("Cape Town", TimeZone(identifier: "Africa/Johannesburg")!),
+        ("Moscow", TimeZone(identifier: "Europe/Moscow")!),
+        ("Istanbul", TimeZone(identifier: "Europe/Istanbul")!),
+        ("Tel Aviv", TimeZone(identifier: "Asia/Jerusalem")!),
+        ("Delhi", TimeZone(identifier: "Asia/Kolkata")!),
+        ("Jakarta", TimeZone(identifier: "Asia/Jakarta")!),
+        ("Manila", TimeZone(identifier: "Asia/Manila")!),
+        ("Auckland", TimeZone(identifier: "Pacific/Auckland")!),
+        ("Melbourne", TimeZone(identifier: "Australia/Melbourne")!),
+        ("Shanghai", TimeZone(identifier: "Asia/Shanghai")!),
+        ("Beijing", TimeZone(identifier: "Asia/Shanghai")!)
+    ]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(randomCities.enumerated()), id: \.offset) { index, city in
+                HStack(spacing: 6) {
+                    Text("\(city.0):")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.9))
+                    
+                    Text(timeString(for: city.1))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.yellow)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.4))
+        .cornerRadius(8)
+        .onAppear {
+            selectRandomCities()
+            startTimeUpdates()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appBecameActive)) { _ in
+            selectRandomCities() // Refresh cities when app becomes active
+        }
+    }
+    
+    private func selectRandomCities() {
+        randomCities = Array(globalCities.shuffled().prefix(3))
+        print("🌍 Globe: Selected random cities: \(randomCities.map { $0.0 }.joined(separator: ", "))")
+    }
+    
+    private func startTimeUpdates() {
+        currentTime = Date()
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            currentTime = Date()
+        }
+    }
+    
+    private func timeString(for timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: currentTime)
     }
 }
 
