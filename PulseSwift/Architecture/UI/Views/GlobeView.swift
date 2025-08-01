@@ -7,6 +7,7 @@ struct GlobeView: View {
     @StateObject private var globeViewModel = GlobeViewModel()
     @State private var selectedStar: GlobeStarEntity?
     @State private var showStarDetails = false
+    @EnvironmentObject private var appFlowViewModel: AppFlowViewModel
     
     var body: some View {
         ZStack {
@@ -18,8 +19,27 @@ struct GlobeView: View {
             )
             .ignoresSafeArea()
             
-            // Live Pulse Location Overlay
+            // UI Overlays
             VStack {
+                // Top Navigation
+                HStack {
+                    // Back to Camera Button
+                    Button(action: {
+                        appFlowViewModel.navigateToCamera()
+                    }) {
+                        Image(systemName: "arrow.left")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+                
                 Spacer()
                 
                 // Live Pulse Location Display

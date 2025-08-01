@@ -223,6 +223,11 @@ extension AppFlowViewModel {
     }
     
     // MARK: - Navigation Methods  
+    func navigateToCamera() {
+        currentFlow = .capturePulse
+        print("✅ AppFlowViewModel: Navigated to camera")
+    }
+    
     func navigateToGlobe() {
         currentFlow = .globe
         print("✅ AppFlowViewModel: Navigated to globe")
