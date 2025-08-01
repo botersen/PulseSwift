@@ -246,9 +246,9 @@ struct GlobeSceneView: UIViewRepresentable {
         let earthNode = SCNNode(geometry: earthGeometry)
         earthNode.name = "earth"
         
-        // Rotate the Earth to center on US/Europe (Y axis rotation adjustment)
-        // Further increase Y rotation to prominently center North America and Europe
-        earthNode.eulerAngles = SCNVector3(0, Float.pi + 1.2, 0) // Even more Y rotation to center North America/Europe
+        // Rotate the Earth to showcase North America/Europe
+        // Y-axis tilt down 30 degrees to show more North America/Europe
+        earthNode.eulerAngles = SCNVector3(0, Float.pi + 1.2 - 0.52, 0) // Y-axis tilt down 30° for better US/Europe view
         
         scene.rootNode.addChildNode(earthNode)
         
@@ -681,18 +681,25 @@ struct GlobeSceneView: UIViewRepresentable {
         }
         
         private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
-            // Create star geometry with larger, more visible size
-        let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.08)) // Increased from 0.02 to make stars visible
+            // Create star geometry with much larger, bright, glowing size
+        let starGeometry = SCNSphere(radius: CGFloat(star.size * 0.15)) // Even larger for visibility
             let starMaterial = SCNMaterial()
             
             let color = star.color.rgba
+            // Make stars much brighter and more visible
             starMaterial.emission.contents = UIColor(
                 red: CGFloat(color.red),
                 green: CGFloat(color.green), 
                 blue: CGFloat(color.blue),
-                alpha: CGFloat(color.alpha * star.glowIntensity)
+                alpha: 1.0 // Full opacity for bright glow
             )
-            starMaterial.diffuse.contents = UIColor.clear
+            starMaterial.diffuse.contents = UIColor(
+                red: CGFloat(color.red * 0.8),
+                green: CGFloat(color.green * 0.8), 
+                blue: CGFloat(color.blue * 0.8),
+                alpha: 0.9 // Bright diffuse color too
+            )
+            starMaterial.lightingModel = .constant // Always bright, not affected by lighting
             starGeometry.materials = [starMaterial]
             
             let starNode = SCNNode(geometry: starGeometry)
@@ -700,7 +707,9 @@ struct GlobeSceneView: UIViewRepresentable {
             
             // Position slightly above sphere surface for visibility
             let coords = star.sphereCoordinates
-        starNode.position = SCNVector3(coords.x * 1.05, coords.y * 1.05, coords.z * 1.05) // More offset from surface
+        starNode.position = SCNVector3(coords.x * 1.1, coords.y * 1.1, coords.z * 1.1) // Even more offset for visibility
+            
+            print("⭐ Creating bright star at: (\(coords.x), \(coords.y), \(coords.z)) color: \(star.color) size: \(star.size)")
             
             // Add pulsing animation
             let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
