@@ -71,6 +71,9 @@ final class CameraViewModel: ObservableObject {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         permissionStatus = CameraPermissionStatus(status)
         
+        print("📷 CameraViewModel: Current permission status: \(permissionStatus)")
+        print("📷 CameraViewModel: isSessionReady = \(isSessionReady)")
+        
         // Check if camera is already preloaded and running
         if cameraState.isSessionRunning && permissionStatus == .authorized {
             print("✅ CameraViewModel: Camera already preloaded and running - instant display!")
@@ -78,11 +81,19 @@ final class CameraViewModel: ObservableObject {
             return
         }
         
-        // Only initialize if not already done (could be pre-warmed)
-        if !isInitialized && permissionStatus == .authorized {
-            print("📷 CameraViewModel: Initializing camera on appear with authorized permissions")
-            initializeCamera()
-        } else if isInitialized {
+        // Always try to initialize if not already done
+        if !isInitialized {
+            if permissionStatus == .authorized {
+                print("📷 CameraViewModel: Initializing camera on appear with authorized permissions")
+                initializeCamera()
+            } else if permissionStatus == .notDetermined {
+                print("📷 CameraViewModel: Permission not determined - requesting and initializing")
+                initializeCamera() // This will request permission first
+            } else {
+                print("❌ CameraViewModel: Permission denied or restricted - cannot initialize")
+                showPermissionAlert = true
+            }
+        } else {
             print("📷 CameraViewModel: Camera already initialized - ready for instant display")
         }
     }
@@ -114,15 +125,29 @@ final class CameraViewModel: ObservableObject {
         
         Task {
             do {
+                print("📷 CameraViewModel: Calling cameraUseCases.initializeCamera()")
                 try await cameraUseCases.initializeCamera()
                 await MainActor.run {
+                    print("✅ CameraViewModel: Camera initialization completed successfully!")
                     self.isInitialized = true
                     self.calculateSessionLatency()
-                    print("✅ CameraViewModel: Camera initialized successfully - ready to show feed")
+                    print("✅ CameraViewModel: isSessionReady = \(self.isSessionReady)")
+                    print("✅ CameraViewModel: permissionStatus = \(self.permissionStatus)")
                 }
             } catch {
                 await MainActor.run {
+                    print("❌ CameraViewModel: Camera initialization failed with error: \(error)")
                     self.handleError(error, context: "Camera initialization")
+                    
+                    // Show permission alert if it's a permission issue
+                    if let cameraError = error as? CameraError {
+                        switch cameraError {
+                        case .permissionDenied:
+                            self.showPermissionAlert = true
+                        default:
+                            break
+                        }
+                    }
                 }
             }
         }

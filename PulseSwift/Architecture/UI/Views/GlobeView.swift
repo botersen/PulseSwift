@@ -56,7 +56,7 @@ struct GlobeView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.yellow)
                     } else {
-                        Text("No current pulses - tap left to send pulse")
+                        Text("No pulses active - tap left to send a pulse")
                             .font(.headline)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.7))
