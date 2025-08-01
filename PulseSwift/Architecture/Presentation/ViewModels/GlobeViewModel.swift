@@ -16,10 +16,24 @@ class GlobeViewModel: ObservableObject {
     @Published var activePulseCount: Int = 0
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var selectedStar: GlobeStarEntity?
+    @Published var showStarDetails = false
     
     // MARK: - Computed Properties
     var hasActivePulse: Bool {
         !activePulses.isEmpty
+    }
+    
+    // MARK: - Star Selection
+    func selectStar(with id: UUID) {
+        selectedStar = stars.first { $0.id == id }
+        showStarDetails = true
+        print("⭐ Selected star: \(selectedStar?.pulseMatch?.partnerLocation ?? CLLocationCoordinate2D())")
+    }
+    
+    func deselectStar() {
+        selectedStar = nil
+        showStarDetails = false
     }
     
     var currentPulseLocation: String {
@@ -481,9 +495,9 @@ extension GlobeViewModel {
     }
     
     private func addPastPulseMatches() {
-        // YC DEMO: 50 diverse pulse matches across all major countries and continents
+        // YC DEMO: 100 diverse pulse matches across all major countries and continents
         let demoLocations = [
-            // North America (12 locations)
+            // North America (25 locations)
             ("New York City", CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)),
             ("Los Angeles", CLLocationCoordinate2D(latitude: 34.0522, longitude: -118.2437)),
             ("Chicago", CLLocationCoordinate2D(latitude: 41.8781, longitude: -87.6298)),
@@ -496,8 +510,21 @@ extension GlobeViewModel {
             ("Boston", CLLocationCoordinate2D(latitude: 42.3601, longitude: -71.0589)),
             ("Montreal", CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673)),
             ("Denver", CLLocationCoordinate2D(latitude: 39.7392, longitude: -104.9903)),
+            ("San Francisco", CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)),
+            ("Atlanta", CLLocationCoordinate2D(latitude: 33.7490, longitude: -84.3880)),
+            ("Phoenix", CLLocationCoordinate2D(latitude: 33.4484, longitude: -112.0740)),
+            ("Las Vegas", CLLocationCoordinate2D(latitude: 36.1699, longitude: -115.1398)),
+            ("Nashville", CLLocationCoordinate2D(latitude: 36.1627, longitude: -86.7816)),
+            ("Portland", CLLocationCoordinate2D(latitude: 45.5152, longitude: -122.6784)),
+            ("Dallas", CLLocationCoordinate2D(latitude: 32.7767, longitude: -96.7970)),
+            ("Houston", CLLocationCoordinate2D(latitude: 29.7604, longitude: -95.3698)),
+            ("Ottawa", CLLocationCoordinate2D(latitude: 45.4215, longitude: -75.6972)),
+            ("Calgary", CLLocationCoordinate2D(latitude: 51.0447, longitude: -114.0719)),
+            ("Guadalajara", CLLocationCoordinate2D(latitude: 20.6597, longitude: -103.3496)),
+            ("Quebec City", CLLocationCoordinate2D(latitude: 46.8139, longitude: -71.2080)),
+            ("San Diego", CLLocationCoordinate2D(latitude: 32.7157, longitude: -117.1611)),
             
-            // Europe (12 locations)
+            // Europe (30 locations)
             ("London", CLLocationCoordinate2D(latitude: 51.5074, longitude: -0.1278)),
             ("Paris", CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)),
             ("Berlin", CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050)),
@@ -510,8 +537,26 @@ extension GlobeViewModel {
             ("Copenhagen", CLLocationCoordinate2D(latitude: 55.6761, longitude: 12.5683)),
             ("Dublin", CLLocationCoordinate2D(latitude: 53.3498, longitude: -6.2603)),
             ("Prague", CLLocationCoordinate2D(latitude: 50.0755, longitude: 14.4378)),
+            ("Zurich", CLLocationCoordinate2D(latitude: 47.3769, longitude: 8.5417)),
+            ("Oslo", CLLocationCoordinate2D(latitude: 59.9139, longitude: 10.7522)),
+            ("Brussels", CLLocationCoordinate2D(latitude: 50.8503, longitude: 4.3517)),
+            ("Munich", CLLocationCoordinate2D(latitude: 48.1351, longitude: 11.5820)),
+            ("Milan", CLLocationCoordinate2D(latitude: 45.4642, longitude: 9.1900)),
+            ("Lisbon", CLLocationCoordinate2D(latitude: 38.7223, longitude: -9.1393)),
+            ("Edinburgh", CLLocationCoordinate2D(latitude: 55.9533, longitude: -3.1883)),
+            ("Geneva", CLLocationCoordinate2D(latitude: 46.2044, longitude: 6.1432)),
+            ("Florence", CLLocationCoordinate2D(latitude: 43.7696, longitude: 11.2558)),
+            ("Budapest", CLLocationCoordinate2D(latitude: 47.4979, longitude: 19.0402)),
+            ("Athens", CLLocationCoordinate2D(latitude: 37.9838, longitude: 23.7275)),
+            ("Warsaw", CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122)),
+            ("Helsinki", CLLocationCoordinate2D(latitude: 60.1699, longitude: 24.9384)),
+            ("Reykjavik", CLLocationCoordinate2D(latitude: 64.1466, longitude: -21.9426)),
+            ("Ljubljana", CLLocationCoordinate2D(latitude: 46.0569, longitude: 14.5058)),
+            ("Tallinn", CLLocationCoordinate2D(latitude: 59.4370, longitude: 24.7536)),
+            ("Riga", CLLocationCoordinate2D(latitude: 56.9496, longitude: 24.1052)),
+            ("Vilnius", CLLocationCoordinate2D(latitude: 54.6872, longitude: 25.2797)),
             
-            // Asia (15 locations)
+            // Asia (25 locations)
             ("Tokyo", CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)),
             ("Seoul", CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.9780)),
             ("Singapore", CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198)),
@@ -527,30 +572,51 @@ extension GlobeViewModel {
             ("Manila", CLLocationCoordinate2D(latitude: 14.5995, longitude: 120.9842)),
             ("Tel Aviv", CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818)),
             ("Dubai", CLLocationCoordinate2D(latitude: 25.2048, longitude: 55.2708)),
+            ("Taipei", CLLocationCoordinate2D(latitude: 25.0330, longitude: 121.5654)),
+            ("Ho Chi Minh City", CLLocationCoordinate2D(latitude: 10.8231, longitude: 106.6297)),
+            ("Hanoi", CLLocationCoordinate2D(latitude: 21.0285, longitude: 105.8542)),
+            ("Dhaka", CLLocationCoordinate2D(latitude: 23.8103, longitude: 90.4125)),
+            ("Karachi", CLLocationCoordinate2D(latitude: 24.8607, longitude: 67.0011)),
+            ("Islamabad", CLLocationCoordinate2D(latitude: 33.6844, longitude: 73.0479)),
+            ("Colombo", CLLocationCoordinate2D(latitude: 6.9271, longitude: 79.8612)),
+            ("Kathmandu", CLLocationCoordinate2D(latitude: 27.7172, longitude: 85.3240)),
+            ("Phnom Penh", CLLocationCoordinate2D(latitude: 11.5564, longitude: 104.9282)),
+            ("Yangon", CLLocationCoordinate2D(latitude: 16.8409, longitude: 96.1735)),
             
-            // South America (4 locations)
+            // South America (8 locations)
             ("São Paulo", CLLocationCoordinate2D(latitude: -23.5505, longitude: -46.6333)),
             ("Buenos Aires", CLLocationCoordinate2D(latitude: -34.6037, longitude: -58.3816)),
             ("Rio de Janeiro", CLLocationCoordinate2D(latitude: -22.9068, longitude: -43.1729)),
             ("Lima", CLLocationCoordinate2D(latitude: -12.0464, longitude: -77.0428)),
+            ("Santiago", CLLocationCoordinate2D(latitude: -33.4489, longitude: -70.6693)),
+            ("Bogotá", CLLocationCoordinate2D(latitude: 4.7110, longitude: -74.0721)),
+            ("Caracas", CLLocationCoordinate2D(latitude: 10.4806, longitude: -66.9036)),
+            ("La Paz", CLLocationCoordinate2D(latitude: -16.4897, longitude: -68.1193)),
             
-            // Africa (4 locations)
+            // Africa (7 locations)
             ("Cairo", CLLocationCoordinate2D(latitude: 30.0444, longitude: 31.2357)),
             ("Lagos", CLLocationCoordinate2D(latitude: 6.5244, longitude: 3.3792)),
             ("Cape Town", CLLocationCoordinate2D(latitude: -33.9249, longitude: 18.4241)),
             ("Nairobi", CLLocationCoordinate2D(latitude: -1.2921, longitude: 36.8219)),
+            ("Marrakech", CLLocationCoordinate2D(latitude: 31.6295, longitude: -7.9811)),
+            ("Johannesburg", CLLocationCoordinate2D(latitude: -26.2041, longitude: 28.0473)),
+            ("Tunis", CLLocationCoordinate2D(latitude: 36.8065, longitude: 10.1815)),
             
-            // Oceania (3 locations)
+            // Oceania (5 locations)
             ("Sydney", CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)),
             ("Melbourne", CLLocationCoordinate2D(latitude: -37.8136, longitude: 144.9631)),
-            ("Auckland", CLLocationCoordinate2D(latitude: -36.8485, longitude: 174.7633))
+            ("Auckland", CLLocationCoordinate2D(latitude: -36.8485, longitude: 174.7633)),
+            ("Brisbane", CLLocationCoordinate2D(latitude: -27.4698, longitude: 153.0251)),
+            ("Perth", CLLocationCoordinate2D(latitude: -31.9505, longitude: 115.8605))
         ]
         
         let demoStars = demoLocations.enumerated().map { index, location in
             // Create variety in match types for realistic demo
             let daysSinceMatch = Double(index % 30 + 1) // 1-30 days ago
             let matchQuality = index % 4 // 0-3 quality levels
-            let conversationLength = [20, 45, 90, 180][matchQuality] // Different conversation lengths
+            
+            // Duration determines star size - longer conversations = bigger stars
+            let conversationLength = [15, 45, 120, 300][matchQuality] // 15sec to 5min conversation lengths
             let photoCount = [1, 2, 3, 5][matchQuality] // More photos = better matches
             
             let mockMatch = PulseMatchEntity(
@@ -566,15 +632,12 @@ extension GlobeViewModel {
                 createdAt: Date().addingTimeInterval(-daysSinceMatch * 86400)
             )
             
-            // Vary star appearance based on match quality and recency
+            // Star size directly based on conversation duration - longer talks = bigger stars
             let size: Float = {
-                switch matchQuality {
-                case 0: return Float.random(in: 0.5...0.7) // Small - brief matches
-                case 1: return Float.random(in: 0.7...0.9) // Medium - good matches
-                case 2: return Float.random(in: 0.9...1.2) // Large - great matches
-                case 3: return Float.random(in: 1.2...1.5) // Extra large - amazing matches
-                default: return 0.8
-                }
+                let duration = Float(conversationLength)
+                let baseSize: Float = 0.4
+                let sizeMultiplier = duration / 60.0 // Convert seconds to minutes for scaling
+                return baseSize + (sizeMultiplier * 0.3) // 0.4 to 2.0 range based on duration
             }()
             
             let color: StarColor = {
@@ -607,6 +670,7 @@ extension GlobeViewModel {
             self.stars.append(contentsOf: demoStars)
             print("🌟 YC DEMO: Added \(demoStars.count) pulse matches across all continents!")
             print("   📊 Quality distribution: Brief(\(demoStars.filter { $0.color == .gray }.count)), Standard(\(demoStars.filter { $0.color == .yellow }.count)), Good(\(demoStars.filter { $0.color == .gold }.count)), Amazing(\(demoStars.filter { $0.color == .brightYellow }.count))")
+            print("   ⭐ Star sizes range from \(demoStars.map { $0.size }.min() ?? 0) to \(demoStars.map { $0.size }.max() ?? 0) based on conversation duration")
         }
     }
     

@@ -66,9 +66,9 @@ struct GlobeView: View {
                                 .padding(12)
                                 .background(Color.black.opacity(0.4))
                                 .clipShape(Circle())
-                        }
-                        
-                        Spacer()
+                    }
+                    
+                    Spacer()
                     }
                 }
                 .padding()
@@ -252,6 +252,9 @@ struct GlobeSceneView: UIViewRepresentable {
         
         scene.rootNode.addChildNode(earthNode)
         
+        // Add current location indicator (red dot)
+        addCurrentLocationIndicator(to: scene)
+        
         // Setup game-like even lighting for mobile visibility
         setupGameLighting(scene: scene)
         
@@ -267,6 +270,48 @@ struct GlobeSceneView: UIViewRepresentable {
         setupAutoRotation(for: earthNode)
         
         return scene
+    }
+    
+    // MARK: - Current Location Indicator
+    private func addCurrentLocationIndicator(to scene: SCNScene) {
+        // Use San Francisco as current location for demo (where user is based)
+        let currentLocation = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+        
+        // Convert to sphere coordinates
+        let lat = Float(currentLocation.latitude * .pi / 180)
+        let lon = Float(currentLocation.longitude * .pi / 180)
+        let radius: Float = 1.02 // Slightly above sphere surface
+        
+        let x = radius * cos(lat) * cos(lon)
+        let y = radius * sin(lat) 
+        let z = radius * cos(lat) * sin(lon)
+        
+        // Create red dot geometry
+        let locationGeometry = SCNSphere(radius: 0.025) // Slightly bigger than stars
+        let locationMaterial = SCNMaterial()
+        
+        // Bright red, always visible
+        locationMaterial.diffuse.contents = UIColor.red
+        locationMaterial.emission.contents = UIColor.red.withAlphaComponent(0.8)
+        locationMaterial.lightingModel = .constant // Always bright
+        
+        locationGeometry.materials = [locationMaterial]
+        
+        let locationNode = SCNNode(geometry: locationGeometry)
+        locationNode.name = "currentLocation"
+        locationNode.position = SCNVector3(x, y, z)
+        
+        // Add pulsing animation to make it stand out
+        let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
+        pulseAnimation.fromValue = 1.0
+        pulseAnimation.toValue = 1.5
+        pulseAnimation.duration = 1.0
+        pulseAnimation.autoreverses = true
+        pulseAnimation.repeatCount = .infinity
+        locationNode.addAnimation(pulseAnimation, forKey: "pulse")
+        
+        scene.rootNode.addChildNode(locationNode)
+        print("📍 Added red current location indicator at San Francisco")
     }
     
     // MARK: - Auto-Rotation Setup
@@ -619,13 +664,31 @@ struct GlobeSceneView: UIViewRepresentable {
         }
         
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-        guard let sceneView = gesture.view as? SCNView else { return }
-        let _ = gesture.location(in: sceneView)
+            guard let sceneView = gesture.view as? SCNView else { return }
+            let location = gesture.location(in: sceneView)
+            
+            // Hit test to find tapped nodes
+            let hitTestResults = sceneView.hitTest(location, options: [:])
             
             Task { @MainActor in
-            // Handle star selection logic here
+                // Check if a star was tapped
+                for result in hitTestResults {
+                    if let starId = UUID(uuidString: result.node.name ?? "") {
+                        // Find the star that was tapped
+                        if let tappedStar = parent.viewModel.stars.first(where: { $0.id == starId }) {
+                            parent.selectedStar = tappedStar
+                        parent.showStarDetails = true
+                            print("⭐ Tapped star at \(tappedStar.location) - Duration: \(tappedStar.pulseMatch?.pulseDuration ?? 0)s")
+                            return
+                        }
+                    }
+                }
+                
+                // If no star was tapped, deselect any selected star
+                parent.selectedStar = nil
+                parent.showStarDetails = false
+            }
         }
-    }
     
     @MainActor @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         // Pause auto-rotation during user interaction
@@ -784,17 +847,17 @@ struct StarDetailView: View {
                 
                 // Pulse details
                 VStack(alignment: .leading, spacing: 12) {
-                    DetailRow(title: "Location", value: "\(star.location.latitude.formatted(.number.precision(.fractionLength(2)))), \(star.location.longitude.formatted(.number.precision(.fractionLength(2))))")
+                    DetailRow(title: "Location", value: getLocationName())
                     
-                DetailRow(title: "Pulse Duration", value: formatDuration(star.pulseMatch?.pulseDuration ?? 0))
-                
-                DetailRow(title: "Photos Exchanged", value: "\(star.pulseMatch?.photoCount ?? 0)")
-                
-                DetailRow(title: "Date", value: star.pulseMatch?.createdAt.formatted(date: .abbreviated, time: .shortened) ?? "User Location")
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
+                    DetailRow(title: "Date", value: star.pulseMatch?.createdAt.formatted(date: .abbreviated, time: .omitted) ?? "Unknown")
+                    
+                    DetailRow(title: "Time", value: star.pulseMatch?.createdAt.formatted(date: .omitted, time: .shortened) ?? "Unknown")
+                    
+                    DetailRow(title: "Duration", value: formatDuration(star.pulseMatch?.pulseDuration ?? 0))
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
         }
         .padding()
     }
@@ -803,6 +866,32 @@ struct StarDetailView: View {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return "\(minutes)m \(seconds)s"
+    }
+    
+    private func getLocationName() -> String {
+        let lat = star.location.latitude
+        let lon = star.location.longitude
+        
+        // Use same city detection logic as GlobeViewModel
+        if lat >= 40.5 && lat <= 41.0 && lon >= -74.5 && lon <= -73.5 { return "New York City, USA" }
+        else if lat >= 51.0 && lat <= 51.5 && lon >= -0.5 && lon <= 0.5 { return "London, UK" }
+        else if lat >= 48.5 && lat <= 49.0 && lon >= 2.0 && lon <= 2.5 { return "Paris, France" }
+        else if lat >= 52.0 && lat <= 52.5 && lon >= 13.0 && lon <= 13.5 { return "Berlin, Germany" }
+        else if lat >= 35.5 && lat <= 36.0 && lon >= 139.5 && lon <= 140.0 { return "Tokyo, Japan" }
+        else if lat >= 37.5 && lat <= 38.0 && lon >= 126.5 && lon <= 127.0 { return "Seoul, South Korea" }
+        else if lat >= 34.0 && lat <= 34.5 && lon >= -118.5 && lon <= -118.0 { return "Los Angeles, USA" }
+        else if lat >= 41.5 && lat <= 42.0 && lon >= -87.5 && lon <= -87.0 { return "Chicago, USA" }
+        else if lat >= 37.5 && lat <= 38.0 && lon >= -122.5 && lon <= -122.0 { return "San Francisco, USA" }
+        else if lat >= 1.0 && lat <= 1.5 && lon >= 103.5 && lon <= 104.0 { return "Singapore" }
+        else if lat >= 19.0 && lat <= 19.5 && lon >= 72.5 && lon <= 73.0 { return "Mumbai, India" }
+        else if lat >= 13.5 && lat <= 14.0 && lon >= 100.0 && lon <= 100.5 { return "Bangkok, Thailand" }
+        else if lat >= 25 && lat <= 49 && lon >= -125 && lon <= -66 { return "North America" }
+        else if lat >= 35 && lat <= 71 && lon >= -10 && lon <= 40 { return "Europe" }
+        else if lat >= -10 && lat <= 37 && lon >= 25 && lon <= 150 { return "Asia" }
+        else if lat >= -56 && lat <= 15 && lon >= -82 && lon <= -35 { return "South America" }
+        else if lat >= -35 && lat <= 37 && lon >= -18 && lon <= 52 { return "Africa" }
+        else if lat >= -47 && lat <= -10 && lon >= 112 && lon <= 180 { return "Australia/Oceania" }
+        else { return "Remote Location" }
     }
 }
 
@@ -814,11 +903,13 @@ struct DetailRow: View {
     var body: some View {
         HStack {
             Text(title)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .font(.custom("DMMono-Regular", size: 14))
+                .foregroundColor(.gray.opacity(0.8))
             Spacer()
             Text(value)
+                .font(.custom("DMMono-Regular", size: 16))
                 .fontWeight(.semibold)
+                .foregroundColor(.primary)
         }
     }
 }
