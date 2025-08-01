@@ -166,9 +166,9 @@ struct GlobeSceneView: UIViewRepresentable {
         let earthNode = SCNNode(geometry: earthGeometry)
         earthNode.name = "earth"
         
-        // Rotate and tilt the Earth to prioritize northern hemisphere (US/Europe)
-        // Y rotation for correct longitude orientation + X tilt for northern view
-        earthNode.eulerAngles = SCNVector3(0.4, Float.pi, 0) // +23° tilt to show northern hemisphere
+        // Rotate the Earth to center on US/Europe (Y axis rotation adjustment)
+        // Adjust Y rotation to bring US/Europe towards center view
+        earthNode.eulerAngles = SCNVector3(0, Float.pi + 0.4, 0) // Y axis adjustment to center on US/Europe
         
         scene.rootNode.addChildNode(earthNode)
         
