@@ -658,11 +658,11 @@ struct StarDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     DetailRow(title: "Location", value: "\(star.location.latitude.formatted(.number.precision(.fractionLength(2)))), \(star.location.longitude.formatted(.number.precision(.fractionLength(2))))")
                     
-                    DetailRow(title: "Pulse Duration", value: formatDuration(star.pulseMatch.pulseDuration))
+                    DetailRow(title: "Pulse Duration", value: formatDuration(star.pulseMatch?.pulseDuration ?? 0))
                     
-                    DetailRow(title: "Photos Exchanged", value: "\(star.pulseMatch.photoCount)")
+                    DetailRow(title: "Photos Exchanged", value: "\(star.pulseMatch?.photoCount ?? 0)")
                     
-                    DetailRow(title: "Date", value: star.pulseMatch.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    DetailRow(title: "Date", value: star.pulseMatch?.createdAt.formatted(date: .abbreviated, time: .shortened) ?? "User Location")
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))

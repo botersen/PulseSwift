@@ -105,7 +105,7 @@ struct GlobeStarEntity {
     let size: Float
     let color: StarColor
     let glowIntensity: Float
-    let pulseMatch: PulseMatchEntity
+    let pulseMatch: PulseMatchEntity?
     
     // 3D coordinates for SceneKit with accurate Earth mapping
     var sphereCoordinates: (x: Float, y: Float, z: Float) {
