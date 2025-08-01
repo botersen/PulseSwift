@@ -169,21 +169,8 @@ struct GlobeSceneView: UIViewRepresentable {
         
         scene.rootNode.addChildNode(earthNode)
         
-        // Setup lighting
-        let ambientLight = SCNLight()
-        ambientLight.type = .ambient
-        ambientLight.intensity = 300
-        let ambientNode = SCNNode()
-        ambientNode.light = ambientLight
-        scene.rootNode.addChildNode(ambientNode)
-        
-        let directionalLight = SCNLight()
-        directionalLight.type = .directional
-        directionalLight.intensity = 800
-        let lightNode = SCNNode()
-        lightNode.light = directionalLight
-        lightNode.position = SCNVector3(x: 2, y: 2, z: 2)
-        scene.rootNode.addChildNode(lightNode)
+        // Setup enhanced lighting for YC demo
+        setupEnhancedLighting(scene: scene)
         
         // Setup camera
         let camera = SCNCamera()
@@ -209,6 +196,49 @@ struct GlobeSceneView: UIViewRepresentable {
         earthNode.runAction(repeatAction, forKey: "autoRotation")
         
         print("🌍 GlobeView: Auto-rotation enabled (right to left, 30s per revolution)")
+    }
+    
+    // MARK: - Enhanced Lighting
+    private func setupEnhancedLighting(scene: SCNScene) {
+        // Key light (main directional light from upper right)
+        let keyLight = SCNLight()
+        keyLight.type = .directional
+        keyLight.intensity = 600 // Reduced from 1200 to avoid washing out
+        keyLight.color = UIColor(white: 1.0, alpha: 1.0)
+        keyLight.castsShadow = true
+        keyLight.shadowRadius = 5.0
+        
+        let keyLightNode = SCNNode()
+        keyLightNode.light = keyLight
+        keyLightNode.position = SCNVector3(x: 2, y: 3, z: 2)
+        keyLightNode.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(keyLightNode)
+        
+        // Fill light (softer ambient to prevent harsh shadows)
+        let fillLight = SCNLight()
+        fillLight.type = .ambient
+        fillLight.intensity = 200 // Reduced from 400
+        fillLight.color = UIColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 1.0) // Slightly cool
+        
+        let fillLightNode = SCNNode()
+        fillLightNode.light = fillLight
+        scene.rootNode.addChildNode(fillLightNode)
+        
+        // Rim light (subtle backlight for depth)
+        let rimLight = SCNLight()
+        rimLight.type = .spot
+        rimLight.intensity = 300 // Reduced from 600
+        rimLight.color = UIColor(red: 1.0, green: 0.9, blue: 0.8, alpha: 1.0) // Warm edge light
+        rimLight.spotInnerAngle = 45
+        rimLight.spotOuterAngle = 60
+        
+        let rimLightNode = SCNNode()
+        rimLightNode.light = rimLight
+        rimLightNode.position = SCNVector3(x: -2, y: 1, z: -2)
+        rimLightNode.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(rimLightNode)
+        
+        print("💡 GlobeView: Enhanced lighting setup complete")
     }
     
     // MARK: - Accurate Earth Texture Creation (Grey Countries, Black Oceans)
