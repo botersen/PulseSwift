@@ -104,8 +104,7 @@ struct GlobeSceneView: UIViewRepresentable {
     @Binding var selectedStar: GlobeStarEntity?
     @Binding var showStarDetails: Bool
     
-    // MARK: - Brutalist Texture Cache
-    private static var cachedSilverTexture: UIImage?
+    // No texture caching needed - using original diffuse map directly
     
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
@@ -147,19 +146,16 @@ struct GlobeSceneView: UIViewRepresentable {
         let earthGeometry = SCNSphere(radius: 1.0)
         let earthMaterial = SCNMaterial()
         
-        // Brutalist minimalist approach: bright silver countries, pure black oceans
-        earthMaterial.diffuse.contents = getBrightSilverTexture()
-        // No normal map - keep it clean and minimal
-        // No emission - pure brutalist simplicity
+        // Use the original diffuse map with subtle reflective properties
+        earthMaterial.diffuse.contents = UIImage(named: "earth_diffuse_map") ?? createSimpleGreyEarthTexture()
         
-        print("✅ GlobeView: Using brutalist minimalist bright silver Earth with pure black oceans")
+        print("✅ GlobeView: Using original Earth diffuse map with reflective surface")
         
-        // Bright metallic material properties for dramatic silver look
-        earthMaterial.specular.contents = UIColor(white: 0.8, alpha: 1.0) // Much brighter reflections
-        earthMaterial.shininess = 0.6 // Higher shine for bright metallic look
-        earthMaterial.lightingModel = .blinn // Better for metallic surfaces
-        earthMaterial.metalness.contents = 0.4 // More metallic
-        earthMaterial.roughness.contents = 0.3 // Smoother surface
+        // Reflective but not metallic properties
+        earthMaterial.specular.contents = UIColor(white: 0.3, alpha: 1.0) // Subtle reflections
+        earthMaterial.shininess = 0.4 // Moderate shine for reflectivity
+        earthMaterial.lightingModel = .blinn // Good for reflective surfaces
+        // No metalness - keep it non-metallic
         
         // Ensure proper UV mapping for geographic accuracy
         earthMaterial.diffuse.wrapS = .repeat
@@ -176,8 +172,8 @@ struct GlobeSceneView: UIViewRepresentable {
         
         scene.rootNode.addChildNode(earthNode)
         
-        // Setup bright lighting for metallic silver countries
-        setupBrightMetallicLighting(scene: scene)
+        // Setup point lighting for reflective surface
+        setupPointLighting(scene: scene)
         
         // Setup camera
         let camera = SCNCamera()
@@ -205,31 +201,32 @@ struct GlobeSceneView: UIViewRepresentable {
         print("🌍 GlobeView: Auto-rotation enabled (right to left, 30s per revolution)")
     }
     
-    // MARK: - Bright Metallic Lighting
-    private func setupBrightMetallicLighting(scene: SCNScene) {
-        // Bright ambient light to make silver countries shine
+    // MARK: - Point Light Setup
+    private func setupPointLighting(scene: SCNScene) {
+        // Moderate ambient light for base visibility
         let ambientLight = SCNLight()
         ambientLight.type = .ambient
-        ambientLight.intensity = 600 // Higher for bright metallic look
-        ambientLight.color = UIColor(white: 1.0, alpha: 1.0)
+        ambientLight.intensity = 200 // Lower ambient for more dramatic point lighting
+        ambientLight.color = UIColor(white: 0.8, alpha: 1.0)
         
         let ambientNode = SCNNode()
         ambientNode.light = ambientLight
         scene.rootNode.addChildNode(ambientNode)
         
-        // Add directional light for metallic reflections
-        let directionalLight = SCNLight()
-        directionalLight.type = .directional
-        directionalLight.intensity = 400
-        directionalLight.color = UIColor(white: 1.0, alpha: 1.0)
+        // Point light for reflective highlights
+        let pointLight = SCNLight()
+        pointLight.type = .omni // Point light
+        pointLight.intensity = 800 // Strong point light
+        pointLight.color = UIColor(white: 1.0, alpha: 1.0)
+        pointLight.attenuationStartDistance = 5.0
+        pointLight.attenuationEndDistance = 10.0
         
-        let directionalNode = SCNNode()
-        directionalNode.light = directionalLight
-        directionalNode.position = SCNVector3(x: 2, y: 2, z: 2)
-        directionalNode.look(at: SCNVector3(0, 0, 0))
-        scene.rootNode.addChildNode(directionalNode)
+        let pointLightNode = SCNNode()
+        pointLightNode.light = pointLight
+        pointLightNode.position = SCNVector3(x: 3, y: 2, z: 3) // Position the point light
+        scene.rootNode.addChildNode(pointLightNode)
         
-        print("💡 GlobeView: Bright metallic lighting setup complete")
+        print("💡 GlobeView: Point lighting setup complete")
     }
     
     // MARK: - Elevation Glow Effect
@@ -336,59 +333,7 @@ struct GlobeSceneView: UIViewRepresentable {
     
 
     
-    private func getBrightSilverTexture() -> UIImage {
-        // Return cached version if available
-        if let cached = Self.cachedSilverTexture {
-            return cached
-        }
-        
-        // Create bright silver texture with pure black oceans
-        let brightTexture = createBrightSilverTexture()
-        Self.cachedSilverTexture = brightTexture
-        
-        return brightTexture
-    }
-    
-    // Removed emission texture function - keeping it brutalist minimal
-    
-    // MARK: - Brutalist Silver Texture Processing
-    private func createBrightSilverTexture() -> UIImage {
-        guard let baseImage = UIImage(named: "earth_diffuse_map") else {
-            print("⚠️ GlobeView: Could not load earth diffuse map, using fallback")
-            return createSimpleGreyEarthTexture()
-        }
-        
-        // Core Image processing for bright silver countries with pure black oceans
-        guard let ciImage = CIImage(image: baseImage) else {
-            return baseImage
-        }
-        
-        // Create brightness/contrast filter for much brighter metallic look
-        let brightnessFilter = CIFilter(name: "CIColorControls")
-        brightnessFilter?.setValue(ciImage, forKey: kCIInputImageKey)
-        brightnessFilter?.setValue(0.8, forKey: kCIInputBrightnessKey)  // Much brighter (+80%)
-        brightnessFilter?.setValue(1.4, forKey: kCIInputContrastKey)    // Higher contrast for black oceans
-        
-        guard let brightImage = brightnessFilter?.outputImage else {
-            return baseImage
-        }
-        
-        // Apply threshold to ensure pure black oceans
-        let thresholdFilter = CIFilter(name: "CIColorThreshold")
-        thresholdFilter?.setValue(brightImage, forKey: kCIInputImageKey)
-        thresholdFilter?.setValue(0.15, forKey: "inputThreshold") // Anything below 15% becomes pure black
-        
-        guard let finalImage = thresholdFilter?.outputImage else {
-            return baseImage
-        }
-        
-        let context = CIContext()
-        if let cgImage = context.createCGImage(finalImage, from: finalImage.extent) {
-            return UIImage(cgImage: cgImage)
-        }
-        
-        return baseImage
-    }
+    // Removed texture processing - using original diffuse map directly for clean appearance
     
     private func createOptimizedEmissionTexture() -> UIImage {
         // Create a simple white emission map for mountain peaks (much lighter processing)
