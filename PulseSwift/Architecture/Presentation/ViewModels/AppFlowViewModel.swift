@@ -13,7 +13,6 @@ final class AppFlowViewModel: ObservableObject {
     @Published var currentFlow: AppFlow = .splash
     @Published var isFirstLaunch: Bool = true
     @Published var hasCompletedOnboarding: Bool = false
-    @Published var hasCompletedProfileSetup: Bool = false
     
     // MARK: - Dependencies
     @Injected private var authUseCases: AuthUseCasesProtocol
@@ -27,12 +26,13 @@ final class AppFlowViewModel: ObservableObject {
     
     init() {
         checkAppLaunchState()
-        checkProfileSetupState()
         setupAuthStateBinding()
     }
     
     // MARK: - Public Methods
     func handleAppLaunch() {
+        print("🚀 AppFlowViewModel: handleAppLaunch called")
+        
         // Check if user is returning and should go directly to camera
         if shouldSkipToCamera() {
             // Pre-load camera for instant startup
@@ -41,11 +41,13 @@ final class AppFlowViewModel: ObservableObject {
             print("🚀 AppFlowViewModel: Returning user - direct to camera")
         } else {
             // New/signed-out user - show splash then auth with polished timing
+            print("🚀 AppFlowViewModel: New user - showing splash then auth")
             currentFlow = .splash
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     self.currentFlow = .authentication
                 }
+                print("🚀 AppFlowViewModel: Transitioned to authentication screen")
             }
         }
     }
@@ -66,36 +68,19 @@ final class AppFlowViewModel: ObservableObject {
         // Store auth token for returning user detection
         UserDefaults.standard.set("authenticated_user_token", forKey: "userAuthToken")
         
-        if isFirstTime || !hasCompletedProfileSetup {
-            currentFlow = .profileSetup
-        } else {
-            // Returning user with completed setup - pre-load camera
-            prepareForCameraTransition()
-            currentFlow = .capturePulse
-        }
-        
-        print("✅ AppFlowViewModel: Auth success - firstTime: \(isFirstTime), profileSetup: \(hasCompletedProfileSetup)")
-    }
-
-    func completeProfileSetup() {
-        hasCompletedProfileSetup = true
-        UserDefaults.standard.set(true, forKey: "hasCompletedProfileSetup")
-        
-        // Pre-load camera for instant startup
+        // Skip profile setup - go directly to camera for all users
         prepareForCameraTransition()
-        
-        // Smooth final transition to camera
         withAnimation(.easeInOut(duration: 0.5)) {
             currentFlow = .capturePulse
         }
+        
+        print("✅ AppFlowViewModel: Auth success - going directly to camera")
     }
 
     func signOut() {
-        hasCompletedProfileSetup = false
-        UserDefaults.standard.removeObject(forKey: "hasCompletedProfileSetup")
         UserDefaults.standard.removeObject(forKey: "userAuthToken")
         currentFlow = .authentication
-        print("✅ AppFlowViewModel: User signed out, reset to first launch")
+        print("✅ AppFlowViewModel: User signed out")
     }
     
     #if DEBUG
@@ -115,8 +100,7 @@ final class AppFlowViewModel: ObservableObject {
     
     // MARK: - Returning User Logic
     private func shouldSkipToCamera() -> Bool {
-        // Check if user has completed onboarding AND profile setup AND is authenticated
-        let hasCompletedBoth = hasCompletedOnboarding && hasCompletedProfileSetup
+        // Check if user has completed onboarding and is authenticated
         let isAuthenticated = isUserAuthenticated()
         
         #if DEBUG
@@ -126,8 +110,8 @@ final class AppFlowViewModel: ObservableObject {
         }
         #endif
         
-        let shouldSkip = hasCompletedBoth && isAuthenticated
-        print("🔍 AppFlowViewModel: shouldSkipToCamera - onboarding: \(hasCompletedOnboarding), profile: \(hasCompletedProfileSetup), auth: \(isAuthenticated) -> \(shouldSkip)")
+        let shouldSkip = hasCompletedOnboarding && isAuthenticated
+        print("🔍 AppFlowViewModel: shouldSkipToCamera - onboarding: \(hasCompletedOnboarding), auth: \(isAuthenticated) -> \(shouldSkip)")
         return shouldSkip
     }
     
@@ -149,6 +133,7 @@ final class AppFlowViewModel: ObservableObject {
     // MARK: - Private Methods
     private func checkAppLaunchState() {
         hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        let authToken = UserDefaults.standard.string(forKey: "userAuthToken")
         
         #if DEBUG
         if forceOnboarding {
@@ -158,41 +143,16 @@ final class AppFlowViewModel: ObservableObject {
         #endif
         
         print("✅ AppFlowViewModel: hasCompletedOnboarding = \(hasCompletedOnboarding)")
+        print("✅ AppFlowViewModel: authToken exists = \(authToken != nil)")
+        print("✅ AppFlowViewModel: isFirstLaunch = \(isFirstLaunch)")
     }
 
-    private func checkProfileSetupState() {
-        hasCompletedProfileSetup = UserDefaults.standard.bool(forKey: "hasCompletedProfileSetup")
-    }
     
     private func setupAuthStateBinding() {
         // This would bind to the auth repository's state changes
         // For now, we'll implement basic state management
     }
     
-    private func determineInitialFlow() {
-        Task {
-            let isAuthenticated = await authUseCases.checkAuthenticationStatus()
-            
-            await MainActor.run {
-                if case .authenticated = isAuthenticated {
-                    // User is signed in
-                    if self.hasCompletedOnboarding {
-                        // Returning user → Direct to main app
-                        self.currentFlow = .capturePulse
-                        print("✅ AppFlowViewModel: Returning user → Camera")
-                    } else {
-                        // Signed in but hasn't completed onboarding → Profile customization
-                        self.currentFlow = .profileSetup
-                        print("✅ AppFlowViewModel: Authenticated but incomplete onboarding → Profile")
-                    }
-                } else {
-                    // User not signed in → Authentication
-                    self.currentFlow = .authentication
-                    print("✅ AppFlowViewModel: Not authenticated → Auth")
-                }
-            }
-        }
-    }
 
     func requestAllPermissionsIfNeeded() {
         // Camera
@@ -219,7 +179,6 @@ final class AppFlowViewModel: ObservableObject {
 enum AppFlow {
     case splash
     case authentication
-    case profileSetup     // Profile customization
     case capturePulse     // Main camera screen
     case globe           // Globe screen
     case settings        // Settings screen

@@ -879,4 +879,25 @@ extension GlobeViewModel {
             createdAt: Date().addingTimeInterval(-Double.random(in: 0...604800))
         )
     }
+    
+    // MARK: - Testing Methods
+    func simulateActivePulse() {
+        // Toggle between having active pulse and no pulse for testing
+        if activePulses.isEmpty {
+            // Create a mock active pulse
+            let mockPulse = ActivePulseConnectionEntity(
+                id: UUID(),
+                userLocation: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060), // NYC
+                partnerLocation: CLLocationCoordinate2D(latitude: 25.7617, longitude: -80.1918), // Miami
+                startTime: Date(),
+                isActive: true
+            )
+            activePulses = [mockPulse]
+            print("🔴 Simulated active pulse started")
+        } else {
+            // Remove active pulses
+            activePulses = []
+            print("⚪ Simulated pulse ended")
+        }
+    }
 } 

@@ -22,7 +22,7 @@ struct CameraScreen: View {
             }
             
             // Camera controls overlay
-            CameraControlsOverlay(cameraViewModel: cameraViewModel)
+            CameraControlsOverlay(cameraViewModel: cameraViewModel, authViewModel: authViewModel)
             
             // Captured media preview
             if let capturedMedia = cameraViewModel.capturedMedia {
@@ -49,19 +49,10 @@ struct CameraScreen: View {
         .onAppear {
             appFlowViewModel.requestAllPermissionsIfNeeded()
             cameraViewModel.onAppear()
-            print("📷 CameraScreen: onAppear - forcing preview reconnection")
-            
-            // CRITICAL FIX: Force preview layer reconnection on appear
-            // This ensures camera works when returning from navigation
-            Task { @MainActor in
-                // Small delay to ensure session is fully ready
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                cameraViewModel.refreshPreviewConnection()
-            }
+            print("📷 CameraScreen: onAppear - camera ready")
         }
         .onDisappear {
-            print("📷 CameraScreen: onDisappear called - NOT calling cameraViewModel.onDisappear() to keep camera alive")
-            // cameraViewModel.onDisappear() // REMOVED - this was causing camera to go black
+            print("📷 CameraScreen: onDisappear - keeping camera session active")
         }
         .onReceive(NotificationCenter.default.publisher(for: .appBecameActive)) { _ in
             cameraViewModel.prepareForForeground()
@@ -209,6 +200,7 @@ struct CameraPlaceholderView: View {
 // MARK: - Camera Controls Overlay
 struct CameraControlsOverlay: View {
     let cameraViewModel: CameraViewModel
+    let authViewModel: AuthViewModel
     
     var body: some View {
         VStack {

@@ -18,7 +18,7 @@ struct AuthScreen: View {
             Color.black.ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 32) { // Match ProfileCustomizationScreen spacing
+                VStack(spacing: 32) {
                     Spacer(minLength: 16) // More generous spacing
                     // Welcome text with asymmetrical layout aligned with form
                     VStack(spacing: 4) { // Reduced from 8
@@ -283,7 +283,7 @@ struct AuthScreen: View {
                     Spacer(minLength: 8) // Add a small spacer at the bottom
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 60) // Match ProfileCustomizationScreen generous top spacing
+                .padding(.top, 60)
             }
         }
         .onAppear {

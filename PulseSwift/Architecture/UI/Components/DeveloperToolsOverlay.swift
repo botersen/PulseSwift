@@ -71,9 +71,6 @@ struct DeveloperToolsPanel: View {
                         appFlowViewModel.currentFlow = .authentication
                     }
                     
-                    DevButton(title: "Profile") {
-                        appFlowViewModel.currentFlow = .profileSetup
-                    }
                     
                     DevButton(title: "Camera") {
                         appFlowViewModel.goDirectlyToCamera()
@@ -85,7 +82,6 @@ struct DeveloperToolsPanel: View {
                 }
                 DevButton(title: "Reset Onboarding & Permissions") {
                     UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
-                    UserDefaults.standard.removeObject(forKey: "hasCompletedProfileSetup")
                     appFlowViewModel.signOut()
                     // Note: Permissions must be reset via Settings or by deleting the app.
                 }
@@ -174,7 +170,6 @@ extension AppFlow {
         case .splash: return "Splash"
         case .loading: return "Loading"
         case .authentication: return "Auth"
-        case .profileSetup: return "Profile Setup"
         case .capturePulse: return "Camera"
         case .globe: return "Globe"
         case .settings: return "Settings"
