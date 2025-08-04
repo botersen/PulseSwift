@@ -3,7 +3,7 @@ import AVFoundation
 
 // MARK: - Camera Screen (High-Performance Clean Architecture)
 struct CameraScreen: View {
-    @StateObject private var cameraViewModel = CameraViewModel()
+    @ObservedObject private var cameraViewModel = CameraViewModel.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var appFlowViewModel: AppFlowViewModel
     
@@ -49,9 +49,19 @@ struct CameraScreen: View {
         .onAppear {
             appFlowViewModel.requestAllPermissionsIfNeeded()
             cameraViewModel.onAppear()
+            print("📷 CameraScreen: onAppear - forcing preview reconnection")
+            
+            // CRITICAL FIX: Force preview layer reconnection on appear
+            // This ensures camera works when returning from navigation
+            Task { @MainActor in
+                // Small delay to ensure session is fully ready
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                cameraViewModel.refreshPreviewConnection()
+            }
         }
         .onDisappear {
-            cameraViewModel.onDisappear()
+            print("📷 CameraScreen: onDisappear called - NOT calling cameraViewModel.onDisappear() to keep camera alive")
+            // cameraViewModel.onDisappear() // REMOVED - this was causing camera to go black
         }
         .onReceive(NotificationCenter.default.publisher(for: .appBecameActive)) { _ in
             cameraViewModel.prepareForForeground()
@@ -67,40 +77,50 @@ struct CameraScreen: View {
     }
 }
 
-// MARK: - Camera Preview Layer
+// MARK: - Industry Standard Camera Preview Layer
 struct CameraPreviewLayer: UIViewRepresentable {
     let cameraViewModel: CameraViewModel
     @Injected private var cameraRepository: CameraRepositoryProtocol
     
     func makeUIView(context: Context) -> CameraPreviewUIView {
         let view = CameraPreviewUIView()
-        // Connect to the actual camera session
+        
+        // Industry standard: Connect to session immediately
         if let repository = cameraRepository as? CameraRepository {
-            view.connectToSession(repository.captureSession)
+            let session = repository.session
+            view.setupPreview(with: session)
+            print("✅ CameraPreviewLayer: Connected to session")
         }
+        
         return view
     }
     
     func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
-        // Update session connection if needed
+        // Industry standard: Preview layer should stay connected
+        // Only reconnect if session changed or lost connection
         if let repository = cameraRepository as? CameraRepository {
-            uiView.connectToSession(repository.captureSession)
+            let session = repository.session
+            if uiView.needsSessionUpdate(session) {
+                uiView.setupPreview(with: session)
+                print("🔄 CameraPreviewLayer: Updated session connection")
+            }
         }
     }
 }
 
-// MARK: - Camera Preview UI View (Performance Optimized)
+// MARK: - Industry Standard Camera Preview UI View
 class CameraPreviewUIView: UIView {
     private var previewLayer: AVCaptureVideoPreviewLayer?
+    private weak var currentSession: AVCaptureSession?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupPreviewLayer()
+        backgroundColor = .black
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupPreviewLayer()
+        backgroundColor = .black
     }
     
     override func layoutSubviews() {
@@ -108,39 +128,29 @@ class CameraPreviewUIView: UIView {
         previewLayer?.frame = bounds
     }
     
-    private func setupPreviewLayer() {
-        backgroundColor = .black
-        print("✅ CameraPreviewUIView: Preview layer configured")
-    }
-    
-    func connectToSession(_ session: AVCaptureSession?) {
-        guard let session = session else { 
-            print("⚠️ CameraPreviewUIView: No session provided")
-            return 
-        }
-        
-        // Prevent redundant connections to the same session
-        if let existingLayer = previewLayer, existingLayer.session === session {
-            print("📷 CameraPreviewUIView: Already connected to this session, skipping")
+    func setupPreview(with session: AVCaptureSession) {
+        // Industry standard: Only create new layer if needed
+        if previewLayer?.session === session {
             return
         }
         
         // Remove existing layer
         previewLayer?.removeFromSuperlayer()
         
-        // Create new preview layer on background queue to avoid main thread blocking
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let newPreviewLayer = AVCaptureVideoPreviewLayer(session: session)
-            newPreviewLayer.videoGravity = .resizeAspectFill
-            
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                newPreviewLayer.frame = self.bounds
-                self.layer.addSublayer(newPreviewLayer)
-                self.previewLayer = newPreviewLayer
-                print("✅ CameraPreviewUIView: Connected to camera session")
-            }
-        }
+        // Create and configure new preview layer
+        let newPreviewLayer = AVCaptureVideoPreviewLayer(session: session)
+        newPreviewLayer.videoGravity = .resizeAspectFill
+        newPreviewLayer.frame = bounds
+        
+        layer.addSublayer(newPreviewLayer)
+        previewLayer = newPreviewLayer
+        currentSession = session
+        
+        print("✅ CameraPreviewUIView: Preview layer setup complete")
+    }
+    
+    func needsSessionUpdate(_ session: AVCaptureSession) -> Bool {
+        return previewLayer?.session !== session
     }
 }
 
@@ -168,9 +178,11 @@ struct CameraPlaceholderView: View {
                 // Permission button if needed
                 if cameraViewModel.shouldShowPermissionButton {
                     Button("Enable Camera") {
-                        // Open settings
-                        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(settingsUrl)
+                        // Open settings on main thread
+                        Task { @MainActor in
+                            if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(settingsUrl)
+                            }
                         }
                     }
                     .font(.custom("DM Mono", size: 14))
@@ -220,8 +232,11 @@ struct CameraControlsOverlay: View {
                 // Settings/logout button
                 Menu {
                     Button("Sign Out") { 
-                        // TODO: Fix authViewModel injection
-                        print("Sign out tapped")
+                        authViewModel.signOut()
+                    }
+                    Button("Settings") {
+                        // Open settings (placeholder for future)
+                        print("Settings tapped")
                     }
                 } label: {
                     Image(systemName: "person.circle")
@@ -243,7 +258,7 @@ struct CameraControlsOverlay: View {
             HStack {
                 // Gallery button
                 Button {
-                    // Open gallery
+                    cameraViewModel.openPhotoLibrary()
                 } label: {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.white.opacity(0.1))
@@ -420,8 +435,10 @@ struct PermissionAlertOverlay: View {
                     .multilineTextAlignment(.center)
                 
                 Button("Open Settings") {
-                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(settingsUrl)
+                    Task { @MainActor in
+                        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsUrl)
+                        }
                     }
                 }
                 .font(.custom("DM Mono", size: 16))

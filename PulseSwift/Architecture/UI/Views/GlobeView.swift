@@ -2,6 +2,15 @@ import SwiftUI
 import SceneKit
 import CoreLocation
 
+// MARK: - Performance Extensions
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
+}
+
 // MARK: - Globe View (SwiftUI Wrapper)
 struct GlobeView: View {
     @StateObject private var globeViewModel = GlobeViewModel()
@@ -19,9 +28,9 @@ struct GlobeView: View {
             )
             .ignoresSafeArea()
             
-            // UI Overlays
+            // DEMO MODE: Minimal UI overlays for performance
             VStack {
-                // Top International Times
+                // Top International Times (keeping for demo visual appeal)
                 HStack {
                     InternationalTimesView()
                     Spacer()
@@ -80,16 +89,28 @@ struct GlobeView: View {
             }
         }
         .onAppear {
-            globeViewModel.startRealtimeUpdates()
+            // PERFORMANCE: Only initialize once
+            globeViewModel.initializeOnceIfNeeded()
             
-            // Add test locations for coordinate verification (for demo)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                globeViewModel.addTestPulseLocations()
-                globeViewModel.startRealTimeUpdates()
+            // CRITICAL: Resume SceneKit rendering when visible
+            Task { @MainActor in
+                if let sceneView = GlobeSceneManager.shared.getOrCreateSceneView(for: GlobeSceneView(viewModel: globeViewModel, selectedStar: $selectedStar, showStarDetails: $showStarDetails)) as? SCNView {
+                    sceneView.isPlaying = true
+                    sceneView.rendersContinuously = true
+                }
             }
         }
         .onDisappear {
-            globeViewModel.stopRealtimeUpdates()
+            // PERFORMANCE: Keep view in memory for instant navigation
+            print("🌍 GlobeView: onDisappear - keeping view in memory for performance")
+            
+            // CRITICAL: Pause SceneKit rendering when not visible for smooth navigation
+            Task { @MainActor in
+                if let sceneView = GlobeSceneManager.shared.getOrCreateSceneView(for: GlobeSceneView(viewModel: globeViewModel, selectedStar: $selectedStar, showStarDetails: $showStarDetails)) as? SCNView {
+                    sceneView.isPlaying = false
+                    sceneView.rendersContinuously = false
+                }
+            }
         }
     }
 }
@@ -178,6 +199,63 @@ struct InternationalTimesView: View {
     }
 }
 
+// MARK: - Singleton SceneKit Manager (PERFORMANCE SOLUTION)
+class GlobeSceneManager: ObservableObject {
+    static let shared = GlobeSceneManager()
+    private var sceneView: SCNView?
+    var coordinator: GlobeSceneView.Coordinator?
+    
+    private init() {}
+    
+    func getOrCreateSceneView(for parent: GlobeSceneView) -> SCNView {
+        if let existingView = sceneView {
+            print("🏭 PERFORMANCE: Reusing existing SceneKit view - NO RECREATION!")
+            coordinator?.parent = parent
+            return existingView
+        }
+        
+        print("🏗️ PERFORMANCE: Creating SceneKit view (ONE TIME ONLY)")
+        let newSceneView = createSceneView(for: parent)
+        sceneView = newSceneView
+        return newSceneView
+    }
+    
+    private func createSceneView(for parent: GlobeSceneView) -> SCNView {
+        let sceneView = SCNView()
+        sceneView.scene = parent.createGlobeScene()
+        sceneView.allowsCameraControl = false // CRITICAL: Disable to prevent swipe conflicts
+        sceneView.autoenablesDefaultLighting = false
+        sceneView.backgroundColor = UIColor.black
+        
+        // PERFORMANCE: Enable aggressive optimizations for smooth navigation
+        sceneView.isJitteringEnabled = false
+        sceneView.antialiasingMode = .none
+        sceneView.preferredFramesPerSecond = 20 // Further reduced for demo navigation performance
+        
+        // DEMO MODE: Maximum performance optimizations
+        sceneView.rendersContinuously = false // Only render when needed
+        sceneView.isPlaying = false // Reduce background processing
+        sceneView.isUserInteractionEnabled = false // CRITICAL: Zero interaction for max performance
+        
+        let coordinator = GlobeSceneView.Coordinator(parent)
+        sceneView.delegate = coordinator
+        self.coordinator = coordinator
+        
+        // DEMO MODE: ZERO globe interactivity for maximum navigation performance
+        // All gestures removed to prevent ANY interference with swiping
+        // Globe is now display-only for buttery smooth navigation
+        
+        // REMOVED: All gesture recognizers for demo performance
+        // let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(GlobeSceneView.Coordinator.handleTap(_:)))
+        // sceneView.addGestureRecognizer(tapGesture)
+        // let panGesture = UIPanGestureRecognizer(target: coordinator, action: #selector(GlobeSceneView.Coordinator.handlePan(_:)))
+        // sceneView.addGestureRecognizer(panGesture)
+        
+        coordinator.sceneView = sceneView
+        return sceneView
+    }
+}
+
 // MARK: - SceneKit Scene View
 struct GlobeSceneView: UIViewRepresentable {
     let viewModel: GlobeViewModel
@@ -187,31 +265,39 @@ struct GlobeSceneView: UIViewRepresentable {
     // No texture caching needed - using original diffuse map directly
     
     func makeUIView(context: Context) -> SCNView {
-        let sceneView = SCNView()
-        sceneView.scene = createGlobeScene()
-        sceneView.allowsCameraControl = true
-        sceneView.autoenablesDefaultLighting = false
-        sceneView.backgroundColor = UIColor.black
-        sceneView.delegate = context.coordinator
-        
-        // Setup gesture recognizers
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        sceneView.addGestureRecognizer(tapGesture)
-        
-        // Setup pan gesture to detect user interaction with the globe
-        let panGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
-        sceneView.addGestureRecognizer(panGesture)
-        
-        // Store reference to scene view for rotation control
-        context.coordinator.sceneView = sceneView
-        
-        return sceneView
+        // PERFORMANCE BREAKTHROUGH: Use singleton pattern to prevent recreation
+        return GlobeSceneManager.shared.getOrCreateSceneView(for: self)
     }
     
     func updateUIView(_ uiView: SCNView, context: Context) {
-        Task { @MainActor in
-            context.coordinator.updateStars(viewModel.stars)
-            context.coordinator.updateActivePulses(viewModel.activePulses)
+        // PERFORMANCE: Get the singleton coordinator
+        guard let coordinator = GlobeSceneManager.shared.coordinator else { return }
+        
+        // Update parent reference
+        coordinator.parent = self
+        
+        // DEMO MODE: Skip ALL star updates during demo to prevent clearing and hangs
+        // Stars are initialized once and kept stable for demo
+        if false && (coordinator.lastStarCount != viewModel.stars.count || coordinator.needsStarUpdate) {
+            Task.detached(priority: .userInitiated) {
+                await coordinator.updateStars(viewModel.stars)
+                await MainActor.run {
+                    coordinator.lastStarCount = viewModel.stars.count
+                    coordinator.needsStarUpdate = false
+                }
+            }
+        }
+        
+        // PERFORMANCE: Skip pulse updates during demo for maximum navigation speed
+        // Pulses disabled for YC demo - stars only
+        if false && (coordinator.lastPulseCount != viewModel.activePulses.count || coordinator.needsPulseUpdate) {
+            Task.detached(priority: .userInitiated) {
+                await coordinator.updateActivePulses(viewModel.activePulses)
+                await MainActor.run {
+                    coordinator.lastPulseCount = viewModel.activePulses.count
+                    coordinator.needsPulseUpdate = false
+                }
+            }
         }
     }
     
@@ -219,7 +305,7 @@ struct GlobeSceneView: UIViewRepresentable {
         Coordinator(self)
     }
     
-    private func createGlobeScene() -> SCNScene {
+    func createGlobeScene() -> SCNScene {
         let scene = SCNScene()
         
         // Create Earth sphere with accurate geographic mapping
@@ -274,8 +360,8 @@ struct GlobeSceneView: UIViewRepresentable {
     
     // MARK: - Current Location Indicator
     private func addCurrentLocationIndicator(to scene: SCNScene) {
-        // Use San Francisco as current location for demo (where user is based)
-        let currentLocation = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+        // Use Toledo, Ohio as current location (user's actual location)
+        let currentLocation = CLLocationCoordinate2D(latitude: 41.6528, longitude: -83.5379)
         
         // Convert to sphere coordinates
         let lat = Float(currentLocation.latitude * .pi / 180)
@@ -284,7 +370,7 @@ struct GlobeSceneView: UIViewRepresentable {
         
         let x = radius * cos(lat) * cos(lon)
         let y = radius * sin(lat) 
-        let z = radius * cos(lat) * sin(lon)
+        let z = -radius * cos(lat) * sin(lon) // Fixed: Added negative sign for correct orientation
         
         // Create red dot geometry
         let locationGeometry = SCNSphere(radius: 0.025) // Slightly bigger than stars
@@ -311,7 +397,7 @@ struct GlobeSceneView: UIViewRepresentable {
         locationNode.addAnimation(pulseAnimation, forKey: "pulse")
         
         scene.rootNode.addChildNode(locationNode)
-        print("📍 Added red current location indicator at San Francisco")
+        print("📍 Added red current location indicator at Toledo, Ohio")
     }
     
     // MARK: - Auto-Rotation Setup
@@ -655,6 +741,25 @@ struct GlobeSceneView: UIViewRepresentable {
         private var starNodes: [UUID: SCNNode] = [:]
         private var pulseLineNodes: [UUID: SCNNode] = [:]
         
+        // PERFORMANCE: Track changes to avoid unnecessary updates
+        var lastStarCount = -1
+        var lastPulseCount = -1
+        var needsStarUpdate = true
+        var needsPulseUpdate = true
+        var starsInitialized = false
+        
+        // PERFORMANCE: Optimized star geometry with soft edges
+        private lazy var sharedStarGeometry: SCNSphere = {
+            let geometry = SCNSphere(radius: 0.015) // Perfect size for integration
+            geometry.segmentCount = 8 // Lower poly count for performance + softer appearance
+            return geometry
+        }()
+        private lazy var sharedStarMaterial: SCNMaterial = {
+            let material = SCNMaterial()
+            material.lightingModel = .constant
+            return material
+        }()
+        
         // Auto-rotation control
         weak var sceneView: SCNView?
         private var autoRotationTimer: Timer?
@@ -699,103 +804,117 @@ struct GlobeSceneView: UIViewRepresentable {
         }
         }
         
-        @MainActor func updateStars(_ stars: [GlobeStarEntity]) {
-            guard let scene = sceneView?.scene else { 
-                print("❌ updateStars: No scene available")
+        func updateStars(_ stars: [GlobeStarEntity]) async {
+            guard let scene = await MainActor.run(body: { sceneView?.scene }) else { 
                 return 
             }
             
-            print("🌟 updateStars called with \(stars.count) stars")
-            
-        // Remove old star nodes
-            let currentStarIds = Set(stars.map { $0.id })
-        let starsToRemove = starNodes.filter { !currentStarIds.contains($0.key) }
-            
-        for (_, node) in starsToRemove {
-                node.removeFromParentNode()
+            // PERFORMANCE: Only log on first initialization
+            if !starsInitialized {
+                print("🌟 Initializing \(stars.count) stars (one-time setup)")
+                starsInitialized = true
             }
-            starNodes = starNodes.filter { currentStarIds.contains($0.key) }
             
-        // Add or update star nodes
-            for star in stars {
-            if starNodes[star.id] == nil {
-                    let starNode = createStarNode(for: star)
-                    starNodes[star.id] = starNode
-                    scene.rootNode.addChildNode(starNode)
-                    print("✅ Added star node to scene: \(star.id)")
-                } else {
-                    print("⚪ Star already exists: \(star.id)")
+            // DEMO MODE: Skip ALL star removal/updates to keep stars stable
+            print("🚫 DEMO: Skipping star updates to prevent clearing and hangs")
+            
+            // DEMO MODE: Only initialize stars once, then never touch them again
+            if starNodes.isEmpty && !stars.isEmpty {
+                print("🌟 DEMO: Creating \(stars.count) stars ONE TIME ONLY")
+                
+                // Create all stars at once for demo
+                let newNodes = stars.map { star in
+                    let starNode = createOptimizedStarNode(for: star)
+                    return (star.id, starNode)
                 }
+                
+                // Add to earth node on main thread
+                await MainActor.run {
+                    guard let earthNode = scene.rootNode.childNode(withName: "earth", recursively: true) else {
+                        print("❌ ERROR: Could not find earth node for star parenting!")
+                        return
+                    }
+                    
+                    for (id, node) in newNodes {
+                        starNodes[id] = node
+                        earthNode.addChildNode(node)
+                    }
+                    print("✅ DEMO: Added \(newNodes.count) stars PERMANENTLY - no more updates!")
+                }
+            } else if !starNodes.isEmpty {
+                print("✅ DEMO: Stars already exist (\(starNodes.count)) - keeping them stable!")
             }
-            
-            print("📊 Total star nodes in coordinator: \(starNodes.count)")
         }
         
-        @MainActor func updateActivePulses(_ pulses: [ActivePulseConnectionEntity]) {
-            guard let scene = sceneView?.scene else { return }
+        func updateActivePulses(_ pulses: [ActivePulseConnectionEntity]) async {
+            guard let scene = await MainActor.run(body: { sceneView?.scene }) else { return }
             
-            // Remove old pulse lines
+            // Performance optimization: Batch operations
             let currentPulseIds = Set(pulses.map { $0.id })
             let linesToRemove = pulseLineNodes.filter { !currentPulseIds.contains($0.key) }
             
-            for (_, node) in linesToRemove {
-                node.removeFromParentNode()
+            // Remove old lines on main thread
+            await MainActor.run {
+                for (_, node) in linesToRemove {
+                    node.removeFromParentNode()
+                }
             }
             pulseLineNodes = pulseLineNodes.filter { currentPulseIds.contains($0.key) }
             
-            // Add or update pulse lines
+            // Create new lines off main thread where possible
+            var newLines: [(UUID, SCNNode)] = []
             for pulse in pulses where pulse.isActive {
                 if pulseLineNodes[pulse.id] == nil {
                     let lineNode = createPulseLineNode(for: pulse)
-                    pulseLineNodes[pulse.id] = lineNode
-                    scene.rootNode.addChildNode(lineNode)
+                    newLines.append((pulse.id, lineNode))
+                }
+            }
+            
+            // Add new lines on main thread (concurrency safe)
+            let linesToAdd = newLines // Capture for concurrency safety
+            await MainActor.run {
+                for (id, node) in linesToAdd {
+                    pulseLineNodes[id] = node
+                    scene.rootNode.addChildNode(node)
                 }
             }
         }
         
-        private func createStarNode(for star: GlobeStarEntity) -> SCNNode {
-            // Create star geometry with much larger, bright, glowing size
-            let finalRadius = CGFloat(max(0.05, star.size * 0.15)) // Minimum 0.05 for visibility  
-            let starGeometry = SCNSphere(radius: finalRadius)
-            let starMaterial = SCNMaterial()
+        private func createOptimizedStarNode(for star: GlobeStarEntity) -> SCNNode {
+            // PERFORMANCE OPTIMIZATION: Reuse shared geometry
+            let starMaterial = sharedStarMaterial.copy() as! SCNMaterial
             
-            let color = star.color.rgba
-            // Make stars much brighter and more visible
+            // Beautiful light yellow with soft glow (overrides star color for demo)
             starMaterial.emission.contents = UIColor(
-                red: CGFloat(color.red),
-                green: CGFloat(color.green), 
-                blue: CGFloat(color.blue),
-                alpha: 1.0 // Full opacity for bright glow
+                red: 1.0,    // Light yellow
+                green: 1.0,  // Light yellow  
+                blue: 0.7,   // Light yellow with slight warmth
+                alpha: 0.9   // Slightly transparent for soft appearance
             )
+            
+            // Add subtle diffuse for integration with globe lighting
             starMaterial.diffuse.contents = UIColor(
-                red: CGFloat(color.red * 0.8),
-                green: CGFloat(color.green * 0.8), 
-                blue: CGFloat(color.blue * 0.8),
-                alpha: 0.9 // Bright diffuse color too
+                red: 1.0,
+                green: 0.95,
+                blue: 0.6,
+                alpha: 0.8
             )
-            starMaterial.lightingModel = .constant // Always bright, not affected by lighting
+            
+            // Clone geometry and apply material
+            let starGeometry = sharedStarGeometry.copy() as! SCNSphere
             starGeometry.materials = [starMaterial]
             
             let starNode = SCNNode(geometry: starGeometry)
             starNode.name = star.id.uuidString
             
-            // Position slightly above sphere surface for visibility
+            // PERFECT: Position star very close to globe surface for integration
             let coords = star.sphereCoordinates
-        starNode.position = SCNVector3(coords.x * 1.15, coords.y * 1.15, coords.z * 1.15) // Much more offset for visibility
+            starNode.position = SCNVector3(coords.x * 1.01, coords.y * 1.01, coords.z * 1.01) // Just 1% above surface
             
-            print("⭐ Creating bright star at: (\(coords.x), \(coords.y), \(coords.z))")
-            print("   📏 Star size: \(star.size) -> final radius: \(finalRadius)")
-            print("   🎨 Color: \(star.color)")
-            print("   📍 Position: (\(coords.x * 1.15), \(coords.y * 1.15), \(coords.z * 1.15))")
-            
-            // Add pulsing animation
-            let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
-            pulseAnimation.fromValue = 1.0
-            pulseAnimation.toValue = 1.3
-            pulseAnimation.duration = 2.0
-            pulseAnimation.autoreverses = true
-            pulseAnimation.repeatCount = .infinity
-            starNode.addAnimation(pulseAnimation, forKey: "pulse")
+            // PERFORMANCE + BEAUTY: Optimized properties for soft integration
+            starMaterial.isDoubleSided = false // Performance optimization
+            starMaterial.lightingModel = .lambert // Soft lighting integration with globe
+            starMaterial.transparency = 0.95 // Slight transparency for soft edges
             
             return starNode
         }
@@ -935,3 +1054,4 @@ struct GlobeView_Previews: PreviewProvider {
             .preferredColorScheme(.dark)
     }
 } 
+

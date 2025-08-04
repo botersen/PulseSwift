@@ -88,29 +88,38 @@ struct AppCoordinator: View {
             Color.black
                 .ignoresSafeArea()
             
-            // Smart flow navigation
+            // Smart flow navigation with polished right-to-left transitions
             Group {
                 switch appFlowViewModel.currentFlow {
                 case .splash:
                     SplashScreen()
+                        .transition(.asymmetric(
+                            insertion: .opacity,
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
+                        
                 case .loading:
                     LoadingScreen()
-                        .transition(.opacity)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     
                 case .authentication:
                     AuthScreen()
-                        .transition(.opacity)
+                        .environmentObject(authViewModel)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     
                 case .profileSetup:
                     ProfileCustomizationScreen()
-                        .transition(.slide)
+                        .environmentObject(authViewModel)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     
                 case .capturePulse:
                     SwipeNavigationContainer()
-                        .transition(.opacity)
+                        .environmentObject(appFlowViewModel)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                         
                 case .globe:
                     SwipeNavigationContainer()
+                        .environmentObject(appFlowViewModel)
                         .transition(.opacity)
                         
                 case .settings:
@@ -118,7 +127,7 @@ struct AppCoordinator: View {
                         .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.3), value: appFlowViewModel.currentFlow)
+            .animation(.easeInOut(duration: 0.5), value: appFlowViewModel.currentFlow)
             
             // Developer tools overlay (DEBUG only)
             #if DEBUG
@@ -316,13 +325,16 @@ struct SettingsButton: View {
     }
 }
 
-// MARK: - Swipe Navigation Container
+// MARK: - Always Ready Navigation Container (Instagram/Snapchat Style)
 struct SwipeNavigationContainer: View {
     @EnvironmentObject private var appFlowViewModel: AppFlowViewModel
+    @EnvironmentObject private var authViewModel: AuthViewModel // CRITICAL: Added for singleton injection
     @State private var currentIndex: Int = 1 // Start at camera (middle screen)
     @State private var offset: CGFloat = 0
-    @State private var globeLoaded: Bool = false // Lazy loading for globe
-    @State private var settingsLoaded: Bool = false // Lazy loading for settings
+    
+    // BREAKTHROUGH: Always-ready screens - no lazy loading, no placeholders
+    @StateObject private var cameraScreen = CameraScreenSingleton()
+    @StateObject private var globeScreen = GlobeScreenSingleton()
     
     private let screens = [0, 1, 2] // 0 = Settings, 1 = Camera, 2 = Globe
     
@@ -330,28 +342,19 @@ struct SwipeNavigationContainer: View {
         GeometryReader { geometry in
             ZStack {
                 HStack(spacing: 0) {
-                    // Settings Screen (Index 0) - Lazy loaded
-                    if settingsLoaded {
-                        SettingsScreen()
-                            .frame(width: geometry.size.width)
-                    } else {
-                        SettingsPlaceholderView()
-                            .frame(width: geometry.size.width)
-                    }
+                    // Settings Screen (Index 0) - Simple, always ready
+                    SettingsScreen()
+                        .frame(width: geometry.size.width)
+                        .simultaneousGesture(DragGesture()) // Allow navigation gestures to pass through
                     
-                    // Camera Screen (Index 1) - Always loaded for instant startup
-                    CameraScreen()
+                    // Camera Screen (Index 1) - Always ready singleton
+                    cameraScreen.view(authViewModel: authViewModel, appFlowViewModel: appFlowViewModel)
                         .frame(width: geometry.size.width)
                     
-                    // Globe Screen (Index 2) - Lazy loaded for performance  
-                    if globeLoaded {
-                        GlobeScreen()
-                            .frame(width: geometry.size.width)
-                    } else {
-                        // Placeholder while globe loads
-                        GlobePlaceholderView()
-                            .frame(width: geometry.size.width)
-                    }
+                    // Globe Screen (Index 2) - Always ready singleton  
+                    globeScreen.view(appFlowViewModel: appFlowViewModel)
+                        .frame(width: geometry.size.width)
+                        .allowsHitTesting(false) // DEMO MODE: Zero interaction for maximum navigation performance
                 }
                 
                 // Page indicator
@@ -369,56 +372,77 @@ struct SwipeNavigationContainer: View {
             }
             .offset(x: offset)
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 30, coordinateSpace: .global)
                     .onChanged { value in
-                        // Calculate offset based on drag
+                        // Calculate offset based on drag with improved responsiveness  
                         let dragOffset = value.translation.width
                         let baseOffset = -CGFloat(currentIndex) * geometry.size.width
                         offset = baseOffset + dragOffset
+                        
+                        // Debug: Track swipe direction
+                        if abs(value.translation.width) > 30 {
+                            let direction = value.translation.width > 0 ? "RIGHT" : "LEFT"
+                            print("🖱️ NAVIGATION: Dragging \(direction): \(value.translation.width)")
+                        }
                     }
                     .onEnded { value in
-                        // Determine if we should snap to next/previous screen
-                        let threshold: CGFloat = geometry.size.width * 0.25
+                        // Determine if we should snap to next/previous screen  
+                        let threshold: CGFloat = geometry.size.width * 0.25 // More forgiving threshold
                         let velocity = value.predictedEndTranslation.width - value.translation.width
+                        
+                        print("🎯 SWIPE DEBUG: translation=\(value.translation.width), threshold=\(threshold), velocity=\(velocity), currentIndex=\(currentIndex)")
                         
                         var newIndex = currentIndex
                         
                         if value.translation.width > threshold || velocity > 1000 {
-                            // Swipe right - go to previous screen
+                            // Swipe right - go to previous screen (Settings ← Camera ← Globe)
                             newIndex = max(0, currentIndex - 1)
+                            print("🔄 Swipe RIGHT: from index \(currentIndex) to \(newIndex), translation: \(value.translation.width)")
                             
-                            // Ensure settings is loaded when swiping to it
-                            if newIndex == 0 && !settingsLoaded {
-                                settingsLoaded = true
-                                print("⚙️ SwipeNavigation: Loading settings due to swipe")
+                            if newIndex == 0 {
+                                print("⚙️ SwipeNavigation: Swiped to settings (always ready)")
+                            } else if newIndex == 1 {
+                                print("📷 SwipeNavigation: Swiped to camera (always ready)")
                             }
                         } else if value.translation.width < -threshold || velocity < -1000 {
-                            // Swipe left - go to next screen
+                            // Swipe left - go to next screen (Settings → Camera → Globe)
                             newIndex = min(screens.count - 1, currentIndex + 1)
+                            print("🔄 Swipe LEFT: from index \(currentIndex) to \(newIndex), translation: \(value.translation.width)")
                             
-                            // Ensure globe is loaded when swiping to it
-                            if newIndex == 2 && !globeLoaded {
-                                globeLoaded = true
-                                print("🌍 SwipeNavigation: Loading globe due to swipe")
+                            if newIndex == 1 {
+                                print("📷 SwipeNavigation: Swiped to camera (always ready)")
+                            } else if newIndex == 2 {
+                                print("🌍 SwipeNavigation: Swiped to globe (always ready)")
                             }
                         }
                         
-                        // Animate to the new position
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        // PERFORMANCE: Use faster, non-blocking animation
+                        withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
                             currentIndex = newIndex
                             offset = -CGFloat(newIndex) * geometry.size.width
-                            
-                            // Update app flow state to match current screen
-                            switch newIndex {
-                            case 0:
-                                appFlowViewModel.currentFlow = .settings
-                            case 1:
-                                appFlowViewModel.currentFlow = .capturePulse
-                            case 2:
-                                appFlowViewModel.currentFlow = .globe
-                            default:
-                                break
+                        }
+                        
+                        // CRITICAL FIX: Force camera refresh when navigating to camera
+                        if newIndex == 1 {
+                            // Small delay to let animation start, then refresh camera
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                                if let cameraViewModel = CameraViewModel.shared as? CameraViewModel {
+                                    cameraViewModel.refreshPreviewConnection()
+                                }
                             }
+                        }
+                        
+                        // CRITICAL FIX: Update app flow state synchronously to prevent race conditions
+                        switch newIndex {
+                        case 0:
+                            appFlowViewModel.currentFlow = .settings
+                        case 1:
+                            appFlowViewModel.currentFlow = .capturePulse
+                        case 2:
+                            appFlowViewModel.currentFlow = .globe
+                        default:
+                            break
                         }
                     }
             )
@@ -439,23 +463,8 @@ struct SwipeNavigationContainer: View {
                 currentIndex = initialIndex
                 offset = -CGFloat(initialIndex) * geometry.size.width
                 
-                // Pre-load screens based on starting position
-                if initialIndex == 1 { // Starting on camera
-                    // Pre-load globe after 1 second for smooth swiping
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        globeLoaded = true
-                        print("🌍 SwipeNavigation: Globe pre-loaded for smooth swiping")
-                    }
-                    // Pre-load settings after 2 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        settingsLoaded = true
-                        print("⚙️ SwipeNavigation: Settings pre-loaded for smooth swiping")
-                    }
-                } else if initialIndex == 2 { // Starting on globe
-                    globeLoaded = true
-                } else if initialIndex == 0 { // Starting on settings
-                    settingsLoaded = true
-                }
+                // BREAKTHROUGH: All screens always ready - no pre-loading needed!
+                print("🚀 PERFORMANCE: All screens always ready - instant navigation!")
             }
             .onChange(of: appFlowViewModel.currentFlow) { _, newFlow in
                 // Update position when flow changes from other sources
@@ -483,23 +492,27 @@ struct SwipeNavigationContainer: View {
     }
 }
 
-// MARK: - Placeholder Views for Lazy Loading
-struct GlobePlaceholderView: View {
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(spacing: 16) {
-                // Loading animation
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.2)
-                
-                Text("Loading Globe...")
-                    .font(.custom("DM Mono", size: 14))
-                    .foregroundColor(.white.opacity(0.7))
-            }
-        }
+// MARK: - Always Ready Screen Singletons  
+class CameraScreenSingleton: ObservableObject {
+    func view(authViewModel: AuthViewModel, appFlowViewModel: AppFlowViewModel) -> some View {
+        CameraScreen()
+            .environmentObject(authViewModel)
+            .environmentObject(appFlowViewModel)
+    }
+    
+    init() {
+        print("📷 PERFORMANCE: Camera singleton created - always ready!")
+    }
+}
+
+class GlobeScreenSingleton: ObservableObject {
+    func view(appFlowViewModel: AppFlowViewModel) -> some View {
+        GlobeScreen()
+            .environmentObject(appFlowViewModel)
+    }
+    
+    init() {
+        print("🌍 PERFORMANCE: Globe singleton created - always ready!")
     }
 }
 
@@ -519,5 +532,27 @@ struct SettingsPlaceholderView: View {
                     .foregroundColor(.white.opacity(0.7))
             }
         }
+    }
+}
+
+// MARK: - Performance View Cache
+class NavigationViewCache: ObservableObject {
+    private var globeView: GlobeScreen?
+    private var settingsView: SettingsScreen?
+    
+    func getGlobeView() -> GlobeScreen {
+        if globeView == nil {
+            print("🏭 PERFORMANCE: Creating globe view (one-time only)")
+            globeView = GlobeScreen()
+        }
+        return globeView!
+    }
+    
+    func getSettingsView() -> SettingsScreen {
+        if settingsView == nil {
+            print("⚙️ PERFORMANCE: Creating settings view (one-time only)")
+            settingsView = SettingsScreen()
+        }
+        return settingsView!
     }
 } 

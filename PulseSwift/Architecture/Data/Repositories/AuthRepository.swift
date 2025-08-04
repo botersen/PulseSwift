@@ -61,35 +61,28 @@ final class AuthRepository: NSObject, AuthRepositoryProtocol {
     }
     
     func signInWithGoogle() async throws -> UserEntity {
-        guard let windowScene = await UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = await windowScene.windows.first,
-              let presentingVC = await window.rootViewController else {
+        // Must access UI elements on main thread
+        let presentingVC = await MainActor.run { () -> UIViewController? in
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first,
+                  let presentingVC = window.rootViewController else {
+                return nil
+            }
+            return presentingVC
+        }
+        
+        guard let presentingVC = presentingVC else {
             throw AuthError.unknown(NSError(domain: "GoogleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "No presenting view controller"]))
         }
         
-        return try await withCheckedThrowingContinuation { continuation in
-            GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC) { result, error in
-                if let error = error {
-                    continuation.resume(throwing: AuthError.unknown(error))
-                    return
-                }
-                
-                guard let result = result,
-                      let idToken = result.user.idToken?.tokenString else {
-                    continuation.resume(throwing: AuthError.invalidCredentials)
-                    return
-                }
-                
-                Task {
-                    do {
-                        let user = try await self.processGoogleSignIn(idToken: idToken, googleUser: result.user)
-                        continuation.resume(returning: user)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
+        // CRITICAL: Use async Google Sign In API to resolve compiler warning
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC)
+        
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.invalidCredentials
         }
+        
+        return try await processGoogleSignIn(idToken: idToken, googleUser: result.user)
     }
     
     func signInWithCredentials(username: String, password: String) async throws -> UserEntity {
@@ -356,6 +349,7 @@ private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, 
         completion(.failure(AuthError.unknown(error)))
     }
     
+    @MainActor
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {

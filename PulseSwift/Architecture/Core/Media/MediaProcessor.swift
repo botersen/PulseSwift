@@ -309,19 +309,25 @@ final class MediaProcessor: MediaProcessorProtocol {
         } else {
             // Fallback for iOS 17 and earlier
             return try await withCheckedThrowingContinuation { continuation in
-                // Capture the session directly in the closure to avoid sendable issues
-                exportSession.exportAsynchronously {
-                    Task { @MainActor in
-                        switch exportSession.status {
-                        case .completed:
-                            continuation.resume(returning: outputURL)
-                        case .failed:
-                            continuation.resume(throwing: exportSession.error ?? MediaError.exportFailed)
-                        case .cancelled:
-                            continuation.resume(throwing: MediaError.exportCancelled)
-                        default:
-                            continuation.resume(throwing: MediaError.exportFailed)
-                        }
+                // Create weak reference to avoid capturing non-sendable AVAssetExportSession
+                exportSession.exportAsynchronously { [weak exportSession] in
+                    guard let exportSession = exportSession else {
+                        continuation.resume(throwing: MediaError.exportFailed)
+                        return
+                    }
+                    
+                    let status = exportSession.status
+                    let error = exportSession.error
+                    
+                    switch status {
+                    case .completed:
+                        continuation.resume(returning: outputURL)
+                    case .failed:
+                        continuation.resume(throwing: error ?? MediaError.exportFailed)
+                    case .cancelled:
+                        continuation.resume(throwing: MediaError.exportCancelled)
+                    default:
+                        continuation.resume(throwing: MediaError.exportFailed)
                     }
                 }
             }

@@ -7,7 +7,11 @@ import SceneKit
 @MainActor
 class GlobeViewModel: ObservableObject {
     // MARK: - Published Properties
-    @Published var stars: [GlobeStarEntity] = []
+    @Published var stars: [GlobeStarEntity] = [] {
+        didSet {
+            print("🌟 GlobeViewModel: stars array updated to \(stars.count) stars")
+        }
+    }
     @Published var activePulses: [ActivePulseConnectionEntity] = []
     @Published var userLocation: UserLocationEntity?
     @Published var timeRange: GlobeViewStateEntity.TimeRange = .lastWeek
@@ -246,7 +250,7 @@ class GlobeViewModel: ObservableObject {
                 limit: 1000
             )
             
-            let newStars = matches.map { match in
+            let _ = matches.map { match in
                 GlobeStarEntity(
                     id: match.id,
                     location: match.userLocation,
@@ -257,8 +261,8 @@ class GlobeViewModel: ObservableObject {
                 )
             }
             
-            stars = newStars
-            totalPulseCount = matches.count
+            // Skip loading from repository during demo - keep our simple demo stars
+            print("🔄 loadPulseMatches: Skipping repository load for demo")
             
         } catch {
             errorMessage = "Failed to load pulse matches: \(error.localizedDescription)"
@@ -417,14 +421,33 @@ class GlobeViewModel: ObservableObject {
     }
 }
 
+    // PERFORMANCE: One-time initialization tracking  
+    private var isInitialized = false
+
 // MARK: - Mock Data (for testing)
 extension GlobeViewModel {
     
+    func initializeOnceIfNeeded() {
+        guard !isInitialized else { 
+            print("🔄 Globe already initialized, skipping")
+            return 
+        }
+        
+        isInitialized = true
+        print("✨ Initializing globe (one-time setup)")
+        
+        // Initialize stars once
+        if stars.isEmpty {
+            add100YellowStarsOnLand()
+        }
+        
+        // DEMO MODE: Skip all real-time updates to keep stars stable on land only
+        print("🚫 DEMO: All real-time updates disabled - land-based stars only")
+    }
+    
     func addTestPulseLocations() {
-        // Simulate real-time pulse activity for demo
-        addUserLocationPin()
-        addActivePulseMatches()
-        addPastPulseMatches()
+        // Legacy method - now handled by initializeOnceIfNeeded()
+        initializeOnceIfNeeded()
     }
     
     private func addUserLocationPin() {
@@ -610,14 +633,14 @@ extension GlobeViewModel {
             ("Perth", CLLocationCoordinate2D(latitude: -31.9505, longitude: 115.8605))
         ]
         
+        // Show all available demo locations (~117 stars)
         let demoStars = demoLocations.enumerated().map { index, location in
-            // Create variety in match types for realistic demo
+            // Simplified - all yellow stars for performance
             let daysSinceMatch = Double(index % 30 + 1) // 1-30 days ago
-            let matchQuality = index % 4 // 0-3 quality levels
             
-            // Duration determines star size - longer conversations = bigger stars
-            let conversationLength = [15, 45, 120, 300][matchQuality] // 15sec to 5min conversation lengths
-            let photoCount = [1, 2, 3, 5][matchQuality] // More photos = better matches
+            // Simple consistent values for performance
+            let conversationLength = 60 // 1 minute conversations
+            let photoCount = 2 // 2 photos per match
             
             let mockMatch = PulseMatchEntity(
                 id: UUID(),
@@ -625,36 +648,17 @@ extension GlobeViewModel {
                 partnerId: UUID(),
                 userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // User in SF
                 partnerLocation: location.1,
-                pulseDuration: Double(conversationLength + Int.random(in: -10...20)), // Add randomness
+                pulseDuration: Double(conversationLength),
                 photoCount: photoCount,
                 sessionStartedAt: Date().addingTimeInterval(-daysSinceMatch * 86400),
                 sessionEndedAt: Date().addingTimeInterval(-daysSinceMatch * 86400 + Double(conversationLength)),
                 createdAt: Date().addingTimeInterval(-daysSinceMatch * 86400)
             )
             
-            // Star size directly based on conversation duration - longer talks = bigger stars
-            let size: Float = {
-                let duration = Float(conversationLength)
-                let baseSize: Float = 0.4
-                let sizeMultiplier = duration / 60.0 // Convert seconds to minutes for scaling
-                return baseSize + (sizeMultiplier * 0.3) // 0.4 to 2.0 range based on duration
-            }()
-            
-            let color: StarColor = {
-                switch matchQuality {
-                case 0: return .gray         // Brief encounters
-                case 1: return .yellow       // Standard matches
-                case 2: return .gold         // Good matches
-                case 3: return .brightYellow // Exceptional matches
-                default: return .yellow
-                }
-            }()
-            
-            let glowIntensity: Float = {
-                let baseGlow = Float(matchQuality) * 0.2 + 0.2 // 0.2-0.8 based on quality
-                let recencyBoost: Float = daysSinceMatch < 7 ? 0.3 : 0.0 // Recent matches glow more
-                return min(1.0, baseGlow + recencyBoost)
-            }()
+            // Bright, visible yellow stars
+            let size: Float = 2.0 // Make them bigger and more visible
+            let color: StarColor = .brightYellow // Bright yellow for visibility
+            let glowIntensity: Float = 1.0 // Maximum glow
             
             return GlobeStarEntity(
                 id: UUID(),
@@ -667,84 +671,28 @@ extension GlobeViewModel {
         }
         
         DispatchQueue.main.async {
-            self.stars.append(contentsOf: demoStars)
-            print("🌟 YC DEMO: Added \(demoStars.count) pulse matches across all continents!")
-            print("   📊 Quality distribution: Brief(\(demoStars.filter { $0.color == .gray }.count)), Standard(\(demoStars.filter { $0.color == .yellow }.count)), Good(\(demoStars.filter { $0.color == .gold }.count)), Amazing(\(demoStars.filter { $0.color == .brightYellow }.count))")
-            print("   ⭐ Star sizes range from \(demoStars.map { $0.size }.min() ?? 0) to \(demoStars.map { $0.size }.max() ?? 0) based on conversation duration")
-            print("   📍 Total stars in ViewModel: \(self.stars.count)")
-            
-            // Log first 3 stars for debugging
-            for (index, star) in demoStars.prefix(3).enumerated() {
-                print("   🔍 Star \(index): \(star.location) size=\(star.size) color=\(star.color)")
+            // Only set once to prevent clearing
+            if self.stars.isEmpty {
+                self.stars = demoStars // Replace with demo stars
+                print("✅ Added 100 yellow stars on land masses for YC demo")
             }
         }
     }
     
-    // MARK: - Real-time Updates
+    // MARK: - Real-time Updates  
     func startRealTimeUpdates() {
-        // Start timer to simulate real-time pulse activity
-        Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-            self?.simulateNewPulseActivity()
-        }
-        print("🎮 Started real-time pulse simulation")
+        // DEMO MODE: Skip real-time simulation to prevent star clearing
+        print("🚫 Real-time simulation disabled for YC demo (keeps stars stable)")
+        // Timer disabled for demo stability
+        // Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+        //     self?.simulateNewPulseActivity()
+        // }
     }
     
     private func simulateNewPulseActivity() {
-        // Randomly add new pulse matches to simulate real activity
-        let randomLocations = [
-            CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522), // Paris
-            CLLocationCoordinate2D(latitude: -34.6037, longitude: -58.3816), // Buenos Aires
-            CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074), // Beijing
-            CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6176), // Moscow
-            CLLocationCoordinate2D(latitude: -26.2041, longitude: 28.0473) // Johannesburg
-        ]
-        
-        guard let randomLocation = randomLocations.randomElement() else { return }
-        
-        let newMatch = PulseMatchEntity(
-            id: UUID(),
-            userId: UUID(),
-            partnerId: UUID(),
-            userLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            partnerLocation: randomLocation,
-            pulseDuration: Double.random(in: 10...30),
-            photoCount: 1,
-            sessionStartedAt: Date(),
-            sessionEndedAt: nil,
-            createdAt: Date()
-        )
-        
-        let newStar = GlobeStarEntity(
-            id: UUID(),
-            location: randomLocation,
-            size: 1.2, // Larger for new matches
-            color: .green, // Bright green for new matches
-            glowIntensity: 1.0,
-            pulseMatch: newMatch
-        )
-        
-        DispatchQueue.main.async {
-            self.stars.append(newStar)
-            self.totalPulseCount += 1
-            self.activePulseCount += 1
-            print("✨ New pulse match added at: \(randomLocation.latitude), \(randomLocation.longitude)")
-            
-            // Convert to past match after 30 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-                if let index = self.stars.firstIndex(where: { $0.id == newStar.id }) {
-                    self.stars[index] = GlobeStarEntity(
-                        id: newStar.id,
-                        location: newStar.location,
-                        size: 0.8,
-                        color: .gray,
-                        glowIntensity: 0.4,
-                        pulseMatch: newStar.pulseMatch
-                    )
-                    self.activePulseCount = max(0, self.activePulseCount - 1)
-                    print("⏰ Pulse match moved to past: \(randomLocation.latitude), \(randomLocation.longitude)")
-                }
-            }
-        }
+        // DEMO MODE: All real-time simulation completely disabled
+        print("🚫 DEMO: Real-time pulse simulation disabled - no dynamic star creation")
+        return
     }
     func loadMockData() {
         // Create mock pulse matches for testing
@@ -781,6 +729,140 @@ extension GlobeViewModel {
         ]
         
         activePulseCount = activePulses.count
+    }
+    
+    // MARK: - Simple YC Demo Stars
+    private func add100YellowStarsOnLand() {
+        // 100 hand-picked coordinates on major land masses
+        let landCoordinates = [
+            // North America (25)
+            (40.7128, -74.0060), // NYC
+            (34.0522, -118.2437), // LA
+            (41.8781, -87.6298), // Chicago
+            (29.7604, -95.3698), // Houston
+            (33.4484, -112.0740), // Phoenix
+            (39.7392, -104.9903), // Denver
+            (47.6062, -122.3321), // Seattle
+            (37.7749, -122.4194), // SF
+            (25.7617, -80.1918), // Miami
+            (42.3601, -71.0589), // Boston
+            (32.7767, -96.7970), // Dallas
+            (30.2672, -97.7431), // Austin
+            (39.2904, -76.6122), // Baltimore
+            (36.1627, -86.7816), // Nashville
+            (35.2271, -80.8431), // Charlotte
+            (43.6532, -79.3832), // Toronto
+            (45.5017, -73.5673), // Montreal
+            (49.2827, -123.1207), // Vancouver
+            (19.4326, -99.1332), // Mexico City
+            (20.6597, -103.3496), // Guadalajara
+            (25.6866, -100.3161), // Monterrey
+            (21.1619, -86.8515), // Cancun
+            (32.7157, -117.1611), // San Diego
+            (45.5152, -122.6784), // Portland
+            (36.1699, -115.1398), // Las Vegas
+            
+            // Europe (25)
+            (51.5074, -0.1278), // London
+            (48.8566, 2.3522), // Paris
+            (52.5200, 13.4050), // Berlin
+            (41.9028, 12.4964), // Rome
+            (40.4168, -3.7038), // Madrid
+            (52.3676, 4.9041), // Amsterdam
+            (59.3293, 18.0686), // Stockholm
+            (55.6761, 12.5683), // Copenhagen
+            (60.1699, 24.9384), // Helsinki
+            (59.9139, 10.7522), // Oslo
+            (47.3769, 8.5417), // Zurich
+            (48.2082, 16.3738), // Vienna
+            (50.0755, 14.4378), // Prague
+            (47.4979, 19.0402), // Budapest
+            (52.2297, 21.0122), // Warsaw
+            (54.6872, 25.2797), // Vilnius
+            (56.9496, 24.1052), // Riga
+            (59.4370, 24.7536), // Tallinn
+            (55.7558, 37.6176), // Moscow
+            (59.5311, 30.2642), // St Petersburg
+            (50.4501, 30.5234), // Kiev
+            (44.4268, 26.1025), // Bucharest
+            (42.6977, 23.3219), // Sofia
+            (45.4642, 9.1900), // Milan
+            (41.3851, 2.1734), // Barcelona
+            
+            // Asia (30)
+            (35.6762, 139.6503), // Tokyo
+            (37.5665, 126.9780), // Seoul
+            (39.9042, 116.4074), // Beijing
+            (31.2304, 121.4737), // Shanghai
+            (22.3193, 114.1694), // Hong Kong
+            (1.3521, 103.8198), // Singapore
+            (13.7563, 100.5018), // Bangkok
+            (21.0285, 105.8542), // Hanoi
+            (10.8231, 106.6297), // Ho Chi Minh
+            (14.5995, 120.9842), // Manila
+            (-6.2088, 106.8456), // Jakarta
+            (3.1390, 101.6869), // KL
+            (28.7041, 77.1025), // Delhi
+            (19.0760, 72.8777), // Mumbai
+            (12.9716, 77.5946), // Bangalore
+            (13.0827, 80.2707), // Chennai
+            (22.5726, 88.3639), // Kolkata
+            (17.3850, 78.4867), // Hyderabad
+            (23.8103, 90.4125), // Dhaka
+            (24.8607, 67.0011), // Karachi
+            (33.6844, 73.0479), // Islamabad
+            (31.5497, 74.3436), // Lahore
+            (34.0522, 71.5249), // Peshawar
+            (25.2048, 55.2708), // Dubai
+            (24.7136, 46.6753), // Riyadh
+            (32.0853, 34.7818), // Tel Aviv
+            (33.8938, 35.5018), // Beirut
+            (36.2048, 138.2529), // Central Japan
+            (26.8206, 30.8025), // Luxor
+            (30.0444, 31.2357), // Cairo
+            
+            // Africa (10)
+            (6.5244, 3.3792), // Lagos
+            (-1.2921, 36.8219), // Nairobi
+            (-26.2041, 28.0473), // Johannesburg
+            (-33.9249, 18.4241), // Cape Town
+            (30.0444, 31.2357), // Cairo
+            (33.9391, -6.8432), // Rabat
+            (36.8065, 10.1815), // Tunis
+            (15.5007, 32.5599), // Khartoum
+            (9.0579, 7.4951), // Abuja
+            (-25.9692, 32.5732), // Maputo
+            
+            // Oceania (5)
+            (-33.8688, 151.2093), // Sydney
+            (-37.8136, 144.9631), // Melbourne
+            (-27.4698, 153.0251), // Brisbane
+            (-31.9505, 115.8605), // Perth
+            (-36.8485, 174.7633), // Auckland
+            
+            // South America (5)
+            (-23.5505, -46.6333), // São Paulo
+            (-22.9068, -43.1729), // Rio
+            (-34.6037, -58.3816), // Buenos Aires
+            (-33.4489, -70.6693), // Santiago
+            (-12.0464, -77.0428) // Lima
+        ]
+        
+        // Create stars only for verified land coordinates (major cities)
+        let demoStars = landCoordinates.map { lat, lon in
+            GlobeStarEntity(
+                id: UUID(),
+                location: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                size: 1.2, // Consistent size for all land-based stars
+                color: .brightYellow,
+                glowIntensity: 1.0,
+                pulseMatch: nil
+            )
+        }
+        
+        stars = demoStars
+        print("✅ LAND ONLY: Added \(demoStars.count) yellow stars on verified cities/land masses")
+        print("🌍 COVERAGE: North America (\(25)), Europe (\(25)), Asia (\(30)), Africa (\(10)), Oceania (\(5)), South America (\(5))")
     }
     
     private func createMockPulseMatch(lat: Double, lon: Double, duration: TimeInterval) -> PulseMatchEntity {

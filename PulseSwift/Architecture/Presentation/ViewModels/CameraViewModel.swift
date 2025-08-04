@@ -12,6 +12,9 @@ extension Notification.Name {
 @MainActor
 final class CameraViewModel: ObservableObject {
     
+    // Singleton for persistent camera state across navigation
+    static let shared = CameraViewModel()
+    
     // MARK: - Published Properties (UI State)
     @Published var cameraState: CameraEntity = .initial
     @Published var permissionStatus: CameraPermissionStatus = .notDetermined
@@ -38,8 +41,8 @@ final class CameraViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var isSessionReady: Bool {
-        // Show camera as soon as we have permission and are initialized
-        permissionStatus == .authorized && isInitialized
+        // Show camera as soon as we have permission and session is running
+        permissionStatus == .authorized && (isInitialized || cameraState.isSessionRunning)
     }
     
     var canCapture: Bool {
@@ -58,11 +61,11 @@ final class CameraViewModel: ObservableObject {
         cameraState.isRecording ? "stop.circle.fill" : "circle.fill"
     }
     
-    init() {
+    private init() {
         setupStateBinding()
         setupNotificationObservers()
         // Don't pre-initialize in init - let onAppear handle it explicitly
-        print("📷 CameraViewModel: Initialized (waiting for explicit startup)")
+        print("📷 CameraViewModel: Shared singleton initialized (waiting for explicit startup)")
     }
     
     // MARK: - Lifecycle Methods
@@ -73,6 +76,7 @@ final class CameraViewModel: ObservableObject {
         
         print("📷 CameraViewModel: Current permission status: \(permissionStatus)")
         print("📷 CameraViewModel: isSessionReady = \(isSessionReady)")
+        print("📷 CameraViewModel: DEBUG - permissionStatus==.authorized: \(permissionStatus == .authorized), isInitialized: \(isInitialized)")
         
         // Check if camera is already preloaded and running
         if cameraState.isSessionRunning && permissionStatus == .authorized {
@@ -113,40 +117,25 @@ final class CameraViewModel: ObservableObject {
         cameraUseCases.prepareForForeground()
     }
     
-    // MARK: - Camera Actions
-    func initializeCamera() {
-        guard !isInitialized else { 
-            print("📷 CameraViewModel: Already initialized, skipping")
-            return 
-        }
+    // MARK: - Camera Actions (Simplified)
+    private func initializeCamera() {
+        guard !isInitialized else { return }
         
-        print("📷 CameraViewModel: Starting camera initialization...")
         sessionStartTime = Date()
         
         Task {
             do {
-                print("📷 CameraViewModel: Calling cameraUseCases.initializeCamera()")
                 try await cameraUseCases.initializeCamera()
                 await MainActor.run {
-                    print("✅ CameraViewModel: Camera initialization completed successfully!")
                     self.isInitialized = true
                     self.calculateSessionLatency()
-                    print("✅ CameraViewModel: isSessionReady = \(self.isSessionReady)")
-                    print("✅ CameraViewModel: permissionStatus = \(self.permissionStatus)")
+                    print("✅ CameraViewModel: Camera ready")
                 }
             } catch {
                 await MainActor.run {
-                    print("❌ CameraViewModel: Camera initialization failed with error: \(error)")
                     self.handleError(error, context: "Camera initialization")
-                    
-                    // Show permission alert if it's a permission issue
-                    if let cameraError = error as? CameraError {
-                        switch cameraError {
-                        case .permissionDenied:
-                            self.showPermissionAlert = true
-                        default:
-                            break
-                        }
+                    if case CameraError.permissionDenied = error {
+                        self.showPermissionAlert = true
                     }
                 }
             }
@@ -273,6 +262,44 @@ final class CameraViewModel: ObservableObject {
     
     func clearError() {
         errorMessage = nil
+    }
+    
+    func refreshPreviewConnection() {
+        // CRITICAL FIX: Force preview layer to reconnect
+        // This ensures camera works when returning from navigation
+        print("🔄 CameraViewModel: Forcing preview layer refresh")
+        
+        // Trigger a state change to force preview layer updateUIView
+        objectWillChange.send()
+        
+        // Also restart session if needed
+        if !cameraState.isSessionRunning && isInitialized {
+            print("🔄 CameraViewModel: Session not running - restarting")
+            restartSession()
+        }
+    }
+    
+    func openPhotoLibrary() {
+        // Light haptic feedback
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+        
+        // Open system photo library
+        guard let settingsUrl = URL(string: "photos-redirect://") else { return }
+        
+        // Try the photos app, fallback to just opening photos via URL scheme
+        if UIApplication.shared.canOpenURL(settingsUrl) {
+            UIApplication.shared.open(settingsUrl)
+        } else {
+            // Alternative: Open Photos app directly
+            if let photosURL = URL(string: "photos://") {
+                UIApplication.shared.open(photosURL)
+            } else {
+                print("📷 CameraViewModel: Unable to open photo library")
+            }
+        }
+        
+        print("📷 CameraViewModel: Opening photo library")
     }
     
     // MARK: - Private Methods

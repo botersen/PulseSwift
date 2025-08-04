@@ -9,6 +9,7 @@ struct AuthScreen: View {
     @State private var isSignUp = true
     @State private var showPassword = false
     @State private var usernameError: String?
+    @State private var passwordError: String?
     @State private var isCheckingUsername = false
     
     var body: some View {
@@ -17,9 +18,8 @@ struct AuthScreen: View {
             Color.black.ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 24) { // Reduced spacing from 32 to 24
-                    Spacer(minLength: 8) // Reduced from 14
-                    Spacer(minLength: 8) // Reduced from 16
+                VStack(spacing: 32) { // Match ProfileCustomizationScreen spacing
+                    Spacer(minLength: 16) // More generous spacing
                     // Welcome text with asymmetrical layout aligned with form
                     VStack(spacing: 4) { // Reduced from 8
                         HStack {
@@ -28,7 +28,7 @@ struct AuthScreen: View {
                                 .foregroundColor(.white)
                             Spacer()
                     }
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 24)
                         
                         HStack {
                             Spacer()
@@ -37,7 +37,7 @@ struct AuthScreen: View {
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.trailing)
                 }
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 24)
                         
                         HStack {
                             Spacer()
@@ -46,7 +46,7 @@ struct AuthScreen: View {
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.trailing)
                         }
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 24)
             }
             
                     // Form fields section - moved much closer to OR line
@@ -89,12 +89,13 @@ struct AuthScreen: View {
                                         .font(.custom("DM Mono", size: 19))
                                         .foregroundColor(.white)
                                         .textFieldStyle(PlainTextFieldStyle())
-                                        .padding(12)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(Color.white.opacity(0.1))
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.05))
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 16)
+                                                    RoundedRectangle(cornerRadius: 8)
                                                         .stroke(usernameError != nil ? Color.red : Color.white.opacity(0.3), lineWidth: 1)
                                                 )
                                         )
@@ -105,37 +106,26 @@ struct AuthScreen: View {
                                             validateUsername(newValue)
                                         }
                                     
-                                    if let error = usernameError {
-                                        Text(error)
-                                            .font(.custom("DM Mono", size: 14))
-                                            .foregroundColor(.red)
-            }
+                                    // Username requirements
+                                    if !authViewModel.username.isEmpty {
+                                        if let error = usernameError {
+                                            Text(error)
+                                                .font(.custom("DM Mono", size: 12))
+                                                .foregroundColor(.red)
+                                        } else {
+                                            Text("✓ Valid username")
+                                                .font(.custom("DM Mono", size: 12))
+                                                .foregroundColor(.green)
+                                        }
+                                    } else {
+                                        Text("3-20 characters, letters/numbers/underscore only")
+                                            .font(.custom("DM Mono", size: 12))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
         }
     }
     
-                            // Email field for sign up
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("email (optional):")
-                                    .font(.custom("DM Mono", size: 19))
-                .foregroundColor(.white)
-            
-                                TextField("email", text: $authViewModel.email)
-                                    .font(.custom("DM Mono", size: 19))
-                                    .foregroundColor(.white)
-                                    .textFieldStyle(PlainTextFieldStyle())
-                                    .padding(12)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(Color.white.opacity(0.1))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 16)
-                                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                            )
-                                    )
-                                    .autocapitalization(.none)
-                                    .autocorrectionDisabled()
-                                    .keyboardType(.emailAddress)
-                            }
+
                         }
                         
                         // Password field
@@ -149,10 +139,16 @@ struct AuthScreen: View {
                                     TextField("password", text: $authViewModel.password)
                                         .font(.custom("DM Mono", size: 19))
                                         .foregroundColor(.white)
+                                        .onChange(of: authViewModel.password) { _, newValue in
+                                            validatePassword(newValue)
+                                        }
                                 } else {
                                     SecureField("password", text: $authViewModel.password)
                                         .font(.custom("DM Mono", size: 19))
                                         .foregroundColor(.white)
+                                        .onChange(of: authViewModel.password) { _, newValue in
+                                            validatePassword(newValue)
+                                        }
                                 }
                                 
                                 Button {
@@ -163,18 +159,38 @@ struct AuthScreen: View {
                                         .font(.system(size: 16))
                                 }
                             }
-                            .padding(12)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white.opacity(0.1))
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white.opacity(0.05))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(passwordError != nil ? Color.red : Color.white.opacity(0.3), lineWidth: 1)
                                     )
                             )
+                            
+                            // Password requirements
+                            VStack(alignment: .leading, spacing: 4) {
+                                if !authViewModel.password.isEmpty {
+                                    if let error = passwordError {
+                                        Text(error)
+                                            .font(.custom("DM Mono", size: 12))
+                                            .foregroundColor(.red)
+                                    } else {
+                                        Text("✓ Password meets all requirements")
+                                            .font(.custom("DM Mono", size: 12))
+                                            .foregroundColor(.green)
+                                    }
+                                } else {
+                                    Text("Must include: 1 capital, 1 number, 1 special char (!$%^&*)")
+                                        .font(.custom("DM Mono", size: 12))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
                         }
                     }
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
                     
                     // Continue button with premium styling
                     Button {
@@ -195,7 +211,7 @@ struct AuthScreen: View {
                     }
                     .disabled(authViewModel.isLoading || (!isSignUp && !authViewModel.isSignInEnabled) || (isSignUp && !authViewModel.isSignUpEnabled))
                     .opacity((authViewModel.isLoading || (!isSignUp && !authViewModel.isSignInEnabled) || (isSignUp && !authViewModel.isSignUpEnabled)) ? 0.6 : 1.0)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
                     
                     // OR divider with premium spacing
         HStack {
@@ -212,7 +228,7 @@ struct AuthScreen: View {
                 .fill(Color.white.opacity(0.3))
                 .frame(height: 1)
         }
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
                     
                     // Social authentication with premium styling
                     VStack(spacing: 16) {
@@ -248,7 +264,7 @@ struct AuthScreen: View {
                         .cornerRadius(16)
                         .padding(.horizontal, 18)
                     }
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
                     
                     // Toggle sign in/up
                     Button {
@@ -267,7 +283,7 @@ struct AuthScreen: View {
                     Spacer(minLength: 8) // Add a small spacer at the bottom
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 24) // Reduced from 60 or higher
+                .padding(.top, 60) // Match ProfileCustomizationScreen generous top spacing
             }
         }
         .onAppear {
@@ -297,6 +313,29 @@ struct AuthScreen: View {
             usernameError = "Username can only contain letters, numbers, and underscores"
         } else {
             usernameError = nil
+        }
+    }
+    
+    private func validatePassword(_ password: String) {
+        guard !password.isEmpty else {
+            passwordError = nil
+            return
+        }
+        
+        let hasCapital = password.contains { $0.isUppercase }
+        let hasNumber = password.contains { $0.isNumber }
+        let hasSpecialChar = password.contains { "!$%^&*".contains($0) }
+        
+        if password.count < 8 {
+            passwordError = "Password must be at least 8 characters"
+        } else if !hasCapital {
+            passwordError = "Password must include at least 1 capital letter"
+        } else if !hasNumber {
+            passwordError = "Password must include at least 1 number"
+        } else if !hasSpecialChar {
+            passwordError = "Password must include at least 1 special character (!$%^&*)"
+        } else {
+            passwordError = nil
         }
     }
 }

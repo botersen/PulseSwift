@@ -40,10 +40,12 @@ final class AppFlowViewModel: ObservableObject {
             currentFlow = .capturePulse
             print("🚀 AppFlowViewModel: Returning user - direct to camera")
         } else {
-            // New/signed-out user - show splash then auth
+            // New/signed-out user - show splash then auth with polished timing
             currentFlow = .splash
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.currentFlow = .authentication
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.currentFlow = .authentication
+                }
             }
         }
     }
@@ -51,7 +53,12 @@ final class AppFlowViewModel: ObservableObject {
     func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-        currentFlow = .capturePulse
+        
+        // Smooth transition to camera with pre-loading
+        prepareForCameraTransition()
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentFlow = .capturePulse
+        }
         print("✅ AppFlowViewModel: Onboarding completed")
     }
     
@@ -77,7 +84,10 @@ final class AppFlowViewModel: ObservableObject {
         // Pre-load camera for instant startup
         prepareForCameraTransition()
         
-        currentFlow = .capturePulse
+        // Smooth final transition to camera
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentFlow = .capturePulse
+        }
     }
 
     func signOut() {

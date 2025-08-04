@@ -53,30 +53,30 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
     
     func startLocationUpdates() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            DispatchQueue.main.async { @Sendable [weak self] in
-                self?.errorMessage = "Location permission not granted"
+            Task { @MainActor in
+                errorMessage = "Location permission not granted"
             }
             return
         }
         
         guard CLLocationManager.locationServicesEnabled() else {
-            DispatchQueue.main.async { @Sendable [weak self] in
-                self?.errorMessage = "Location services are disabled"
+            Task { @MainActor in
+                errorMessage = "Location services are disabled"
             }
             return
         }
         
-        DispatchQueue.main.async { @Sendable [weak self] in
-            self?.locationManager.startUpdatingLocation()
-            self?.isLocationUpdateActive = true
+        Task { @MainActor in
+            locationManager.startUpdatingLocation()
+            isLocationUpdateActive = true
         }
         print("✅ LocationManager: Started location updates")
     }
     
     func stopLocationUpdates() {
-        DispatchQueue.main.async { @Sendable [weak self] in
-            self?.locationManager.stopUpdatingLocation()
-            self?.isLocationUpdateActive = false
+        Task { @MainActor in
+            locationManager.stopUpdatingLocation()
+            isLocationUpdateActive = false
         }
         print("✅ LocationManager: Stopped location updates")
     }
@@ -88,13 +88,14 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
         }
         
         return await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { @Sendable [weak self] in
-                self?.locationManager.requestLocation()
+            Task { @MainActor in
+                locationManager.requestLocation()
             }
             
             // Set a timeout
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { @Sendable [weak self] in
-                if self?.currentLocation == nil {
+            Task {
+                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+                if currentLocation == nil {
                     continuation.resume(returning: nil)
                 }
             }
@@ -149,55 +150,55 @@ extension LocationManager: CLLocationManagerDelegate {
             return
         }
         
-        DispatchQueue.main.async { @Sendable [weak self] in
-            self?.currentLocation = location
-            self?.lastLocationUpdate = Date()
-            self?.errorMessage = nil
+        Task { @MainActor in
+            currentLocation = location
+            lastLocationUpdate = Date()
+            errorMessage = nil
         }
         
         print("✅ LocationManager: Updated location: \(location.coordinate)")
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        DispatchQueue.main.async { @Sendable [weak self] in
-            self?.errorMessage = "Location update failed: \(error.localizedDescription)"
-            self?.isLocationUpdateActive = false
+        Task { @MainActor in
+            errorMessage = "Location update failed: \(error.localizedDescription)"
+            isLocationUpdateActive = false
         }
         
         print("❌ LocationManager: Failed with error: \(error)")
     }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        DispatchQueue.main.async { @Sendable [weak self] in
-            self?.authorizationStatus = status
+        Task { @MainActor in
+            authorizationStatus = status
             
             switch status {
             case .notDetermined:
                 print("📍 LocationManager: Authorization not determined")
                 
             case .denied, .restricted:
-                self?.errorMessage = "Location access denied. Enable in Settings to use pulse matching."
-                DispatchQueue.global(qos: .background).async {
+                errorMessage = "Location access denied. Enable in Settings to use pulse matching."
+                Task.detached(priority: .background) { [weak self] in
                     self?.stopLocationUpdates()
                 }
                 print("❌ LocationManager: Authorization denied/restricted")
                 
             case .authorizedWhenInUse:
-                self?.errorMessage = nil
-                DispatchQueue.global(qos: .background).async {
+                errorMessage = nil
+                Task.detached(priority: .background) { [weak self] in
                     self?.startLocationUpdates()
                 }
                 print("✅ LocationManager: Authorization granted (when in use)")
                 
             case .authorizedAlways:
-                self?.errorMessage = nil
-                DispatchQueue.global(qos: .background).async {
+                errorMessage = nil
+                Task.detached(priority: .background) { [weak self] in
                     self?.startLocationUpdates()
                 }
                 print("✅ LocationManager: Authorization granted (always)")
                 
             @unknown default:
-                self?.errorMessage = "Unknown location authorization status"
+                errorMessage = "Unknown location authorization status"
                 print("⚠️ LocationManager: Unknown authorization status")
             }
         }
